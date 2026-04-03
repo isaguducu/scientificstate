@@ -188,21 +188,8 @@
           "minItems": 1
         },
         "execution_witness": {
-          "type": "object",
-          "description": "Compute execution record — see report-projection.schema.json#/$defs/ExecutionWitness for canonical definition",
-          "required": ["compute_class", "backend_id"],
-          "properties": {
-            "compute_class": {
-              "type": "string",
-              "enum": ["classical", "quantum_sim", "quantum_hw", "hybrid"]
-            },
-            "backend_id": { "type": "string" },
-            "classical_baseline_ref": { "type": "string" },
-            "translation_fidelity": { "type": "string" },
-            "semantic_loss_risk": { "type": "string" },
-            "compute_artifact_risk": { "type": "string" },
-            "hardware_or_simulator_context": { "type": "object" }
-          }
+          "$ref": "report-projection.schema.json#/$defs/ExecutionWitness",
+          "description": "Compute execution record — canonical definition in report-projection.schema.json#/$defs/ExecutionWitness (Execution_Plan_Phase0.md §2.5)"
         }
       }
     }

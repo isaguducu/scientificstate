@@ -43,8 +43,16 @@
     },
     "epistemic_status": {
       "type": "string",
-      "enum": ["incomplete", "provisional", "contested", "endorsed"],
-      "description": "Current epistemic status — always visible (COCKPIT §2.3)"
+      "enum": [
+        "draft",
+        "under_review",
+        "provisionally_supported",
+        "endorsable",
+        "endorsed",
+        "contested",
+        "retracted"
+      ],
+      "description": "Current epistemic status — 7-state lifecycle, always visible (COCKPIT §2.3)"
     },
     "what_would_change_this": {
       "type": "string",

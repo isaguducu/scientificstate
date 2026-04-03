@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compute-run-result.schema.json",
+  "title": "ComputeRunResult",
+  "description": "Response from GET /runs/{run_id} — compute run lifecycle state and output",
+  "type": "object",
+  "required": ["run_id", "workspace_id", "domain_id", "method_id", "status", "started_at"],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "description": "Globally unique run identifier — permanent, never reused"
+    },
+    "workspace_id": {
+      "type": "string"
+    },
+    "domain_id": {
+      "type": "string"
+    },
+    "method_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "succeeded", "failed"],
+      "description": "Run lifecycle state"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ssv_ref": {
+      "type": "string",
+      "description": "SSV id produced by this run — only present when status=succeeded"
+    },
+    "result": {
+      "type": "object",
+      "description": "Domain computation output — only present when status=succeeded"
+    },
+    "execution_witness": {
+      "type": "object",
+      "required": ["compute_class", "backend_id"],
+      "properties": {
+        "compute_class": {
+          "type": "string",
+          "enum": ["classical", "quantum_sim", "quantum_hw", "hybrid"]
+        },
+        "backend_id": {
+          "type": "string"
+        }
+      },
+      "description": "Compute backend record — present when status=succeeded or running"
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "error_code": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "description": "Error detail — only present when status=failed"
+    }
+  },
+  "additionalProperties": false
+}

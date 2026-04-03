@@ -1,0 +1,13 @@
+# CODEOWNERS
+# GitHub automatically requests review from these teams when a PR touches the listed paths.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+/Core/framework/          @scientificstate/core-team
+/Core/contracts/          @scientificstate/core-team
+/Core/daemon/             @scientificstate/core-team
+/Desktop/                 @scientificstate/desktop-team
+/Domains/polymer/         @scientificstate/polymer-maintainers
+LICENSE                   @scientificstate/governance
+CONTRIBUTING.md           @scientificstate/governance
+CODE_OF_CONDUCT.md        @scientificstate/governance
+SECURITY.md               @scientificstate/governance

@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use ScientificState in your research, please cite it using this metadata."
+type: software
+title: "ScientificState"
+abstract: >
+  ScientificState is a desktop-first scientific workbench for managing epistemic state
+  across scientific investigations. It introduces the Scientific State Vector (SSV),
+  a structured 8-component model (D, I, A, T, R, U, V, P) for tracking the state of
+  scientific claims, alongside a 7-state ClaimStatus lifecycle and a pluggable domain
+  module architecture with schema-enforced falsifiability, uncertainty, and validity scope.
+authors:
+  - name: "ScientificState Contributors"
+repository-code: "https://github.com/scientificstate/scientificstate"
+license: Apache-2.0
+date-released: "2026-04-03"
+version: "0.1.0-phase0"
+keywords:
+  - scientific-workflow
+  - epistemic-state
+  - reproducibility
+  - scientific-claims
+  - open-science
+  - desktop-workbench
+  - domain-plugin-architecture

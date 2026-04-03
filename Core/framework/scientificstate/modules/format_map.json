@@ -1,0 +1,8 @@
+{
+  "csv": ["polymer_science"],
+  "json": ["polymer_science"],
+  "mzml": ["polymer_science"],
+  "qasm": ["quantum_circuit"],
+  "fasta": ["genomics"],
+  "pdb": ["structural_biology"]
+}

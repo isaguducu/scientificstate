@@ -1,0 +1,116 @@
+name: Phase 1 CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Core/contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: Core/contracts/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run validate
+      - run: pnpm run build
+
+  framework:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Core/framework
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-extras
+      - run: uv run pytest -q
+      - run: uv run ruff check .
+
+  polymer:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Domains/polymer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-extras
+      - run: uv run pytest -q
+      - run: uv run ruff check .
+
+  daemon:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Core/daemon
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-extras
+      - run: uv run pytest tests/ -q
+      - run: uv run ruff check .
+
+  desktop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @scientificstate/desktop run typecheck
+      - run: pnpm --filter @scientificstate/desktop run build
+
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check required governance documents
+        run: |
+          echo "Checking mandatory governance files..."
+          for f in LICENSE CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md CODEOWNERS; do
+            if [ ! -f "$f" ]; then
+              echo "MISSING: $f"
+              exit 1
+            fi
+            echo "OK: $f"
+          done
+      - name: Validate LICENSE is non-empty
+        run: |
+          if [ ! -s LICENSE ]; then
+            echo "FAIL: LICENSE is empty"
+            exit 1
+          fi
+          echo "OK: LICENSE has content"
+      - name: Validate CODEOWNERS syntax (basic)
+        run: |
+          # Each non-comment, non-empty line must have at least a pattern and one owner
+          while IFS= read -r line; do
+            # Skip comments and empty lines
+            [[ "$line" =~ ^#.*$ ]] && continue
+            [[ -z "$line" ]] && continue
+            # Must have at least 2 tokens (pattern + owner)
+            count=$(echo "$line" | awk '{print NF}')
+            if [ "$count" -lt 2 ]; then
+              echo "FAIL: CODEOWNERS line missing owner: $line"
+              exit 1
+            fi
+          done < CODEOWNERS
+          echo "OK: CODEOWNERS syntax valid"

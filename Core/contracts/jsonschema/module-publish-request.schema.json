@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scientificstate.org/schemas/module-publish-request.schema.json",
+  "title": "ModulePublishRequest",
+  "type": "object",
+  "required": ["manifest", "tarball_hash", "signature"],
+  "properties": {
+    "manifest": { "$ref": "module-manifest.schema.json" },
+    "tarball_hash": { "type": "string", "description": "SHA-256 of the tarball" },
+    "signature": { "type": "string", "description": "Ed25519 or Sigstore signature hex" }
+  }
+}

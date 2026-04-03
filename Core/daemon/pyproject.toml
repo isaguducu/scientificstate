@@ -12,6 +12,9 @@ dependencies = [
     "scientificstate-framework",
 ]
 
+[project.optional-dependencies]
+quantum = ["qiskit>=1.0", "qiskit-aer>=0.13"]
+
 [project.scripts]
 daemon = "src.main:start"
 

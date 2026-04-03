@@ -30,8 +30,8 @@ for (const schema of schemas) {
   const schemaPath = resolve(SCHEMA_DIR, schema);
   try {
     const output = execSync(
-      `${JSON2TS} --input "${schemaPath}" --unreachableDefinitions`,
-      { encoding: "utf-8" }
+      `${JSON2TS} --input "${basename(schemaPath)}" --unreachableDefinitions`,
+      { encoding: "utf-8", cwd: SCHEMA_DIR }
     );
     combined +=
       `// ─── ${basename(schema)} ───────────────────────────────\n` +

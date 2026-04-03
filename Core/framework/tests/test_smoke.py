@@ -192,6 +192,7 @@ def test_domain_module_required_interface():
     assert "domain_id" in abstract_methods, "domain_id must be abstract"
     assert "domain_name" in abstract_methods, "domain_name must be abstract"
     assert "supported_data_types" in abstract_methods, "supported_data_types must be abstract"
+    assert "version" in abstract_methods, "version must be abstract"
     assert "list_methods" in abstract_methods, "list_methods must be abstract"
     assert "execute_method" in abstract_methods, "execute_method must be abstract"
 
@@ -204,6 +205,8 @@ def test_domain_registry_register_and_get():
         def domain_id(self) -> str: return "fake_domain"
         @property
         def domain_name(self) -> str: return "Fake Domain"
+        @property
+        def version(self) -> str: return "0.1.0"
         @property
         def supported_data_types(self) -> list: return ["fake_csv"]
         def list_methods(self) -> list: return []
@@ -226,6 +229,8 @@ def test_domain_registry_list_domains_contains_registered():
         def domain_id(self) -> str: return "d1"
         @property
         def domain_name(self) -> str: return "D1"
+        @property
+        def version(self) -> str: return "0.1.0"
         @property
         def supported_data_types(self) -> list: return []
         def list_methods(self) -> list: return []
@@ -251,6 +256,8 @@ def test_domain_module_describe():
         @property
         def domain_name(self) -> str: return "Fake"
         @property
+        def version(self) -> str: return "1.2.3"
+        @property
         def supported_data_types(self) -> list: return ["x"]
         def list_methods(self) -> list: return [{"method_id": "m1"}]
         def execute_method(self, method_id, data_ref, assumptions, params): return {}
@@ -258,6 +265,7 @@ def test_domain_module_describe():
     d = FakeDomain()
     desc = d.describe()
     assert desc["domain_id"] == "fake"
+    assert desc["version"] == "1.2.3"
     assert desc["method_count"] == 1
 
 

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compute-run-request.schema.json",
+  "title": "ComputeRunRequest",
+  "description": "Request body for POST /runs — initiates a domain compute run in a workspace",
+  "type": "object",
+  "required": ["workspace_id", "domain_id", "method_id"],
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "description": "Target workspace identifier"
+    },
+    "domain_id": {
+      "type": "string",
+      "description": "Domain module identifier (e.g. 'polymer_science')"
+    },
+    "method_id": {
+      "type": "string",
+      "description": "Method identifier within the domain (e.g. 'kmd_analysis')"
+    },
+    "dataset_ref": {
+      "type": "string",
+      "description": "raw_data_id from /datasets/ingest response — references immutable stored data"
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "P3: explicit scientific assumptions for this run"
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Method-specific parameters — validated against domain MethodManifest.parameters_schema"
+    }
+  },
+  "additionalProperties": false
+}

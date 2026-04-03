@@ -1,0 +1,18 @@
+{
+  "manifest": {
+    "manifest_version": "1.0",
+    "domain_id": "polymer_science",
+    "domain_name": "Polymer Science",
+    "version": "0.1.0",
+    "description": "Polymer characterization and analysis domain",
+    "entry_point": "polymer_science.domain_manifest:PolymerScienceDomain",
+    "min_core_version": "0.1.0",
+    "supported_data_types": ["dsc_thermal", "tga_thermal"],
+    "checksum": {
+      "algorithm": "sha256",
+      "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "tarball_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "signature": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+}

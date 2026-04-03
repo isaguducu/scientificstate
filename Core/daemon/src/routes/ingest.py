@@ -1,11 +1,10 @@
-"""POST /datasets/ingest — immutable raw data ingest stub.
+"""POST /datasets/ingest — immutable raw data ingest.
 
 Request/response shape matches daemon-api.yaml IngestRequest / IngestResponse.
 """
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -15,15 +14,20 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
+from src.storage.ingest import ingest_raw_file
 from src.storage.schema import record_ingest_event
 
 logger = logging.getLogger("scientificstate.daemon.ingest")
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 
+# Content-addressed store root — sibling to data/daemon.db
+_STORE_ROOT = Path(__file__).parent.parent.parent / "data" / "store"
+
 
 class IngestRequest(BaseModel):
     """Matches IngestRequest in daemon-api.yaml."""
+
     data_path: str = Field(..., description="Absolute local file path to raw data")
     acquisition_timestamp: str = Field(..., description="ISO-8601 datetime")
     instrument_id: str = Field(..., description="Instrument identifier")
@@ -37,8 +41,13 @@ class IngestRequest(BaseModel):
 
 class IngestResponse(BaseModel):
     """Matches IngestResponse in daemon-api.yaml."""
-    raw_data_id: str = Field(..., description="Permanent identifier — never reused, never deleted")
-    content_hash: str = Field(..., description="SHA-256 content hash for integrity verification")
+
+    raw_data_id: str = Field(
+        ..., description="Permanent identifier — never reused, never deleted"
+    )
+    content_hash: str = Field(
+        ..., description="SHA-256 content hash for integrity verification"
+    )
     stored_at: str = Field(..., description="ISO-8601 datetime when stored")
 
 
@@ -50,32 +59,33 @@ class IngestResponse(BaseModel):
 )
 async def ingest_dataset(body: IngestRequest) -> Any:
     """
-    Accepts a dataset ingest request and records it immutably in the local
-    SQLite store.
+    Accepts a dataset ingest request and stores it immutably.
 
-    Constitutional constraint (P1 — immutability):
-    - Raw data is NEVER mutated once ingested.
-    - Each call produces a new immutable record.
-    - Source file on disk is not moved or modified by the daemon.
-
-    Phase 0 stub: records the event, returns raw_data_id + content_hash.
-    Actual domain-specific parsing is wired in subsequent phases.
+    Constitutional constraints:
+    - P1 (Immutability): raw data is NEVER mutated once ingested.
+    - File must be locally accessible — content hash requires real file content.
+    - Duplicate content (same SHA-256) → 409 Conflict.
     """
     raw_data_id = str(uuid.uuid4())
     stored_at = datetime.now(tz=timezone.utc).isoformat()
 
-    # Content hash: file MUST be locally accessible (immutability requires real content hash)
     data_path = Path(body.data_path)
     if not data_path.is_file():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"data_path not found on daemon host: {body.data_path}",
         )
-    h = hashlib.sha256()
-    with data_path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(65536), b""):
-            h.update(chunk)
-    content_hash = h.hexdigest()
+
+    # Immutable copy to content-addressed store
+    try:
+        file_meta = ingest_raw_file(data_path, _STORE_ROOT)
+    except FileExistsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Dataset already ingested: {exc}",
+        ) from exc
+
+    content_hash: str = file_meta["content_hash"]
 
     try:
         await record_ingest_event(
@@ -93,8 +103,11 @@ async def ingest_dataset(body: IngestRequest) -> Any:
             timestamp=stored_at,
         )
         logger.info(
-            "Ingest recorded: domain=%s sample=%s raw_data_id=%s",
-            body.domain_id, body.sample_id, raw_data_id,
+            "Ingest recorded: domain=%s sample=%s raw_data_id=%s hash=%s",
+            body.domain_id,
+            body.sample_id,
+            raw_data_id,
+            content_hash,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to record ingest event: %s", exc)

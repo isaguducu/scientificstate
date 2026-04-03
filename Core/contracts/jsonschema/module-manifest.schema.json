@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scientificstate.org/schemas/module-manifest.schema.json",
+  "title": "ModuleManifest",
+  "description": "Distribution contract for ScientificState domain modules — packaging, versioning, dependency, taxonomy, and format signatures. Distinct from domain-module.schema.json (runtime contract).",
+  "type": "object",
+  "required": [
+    "manifest_version",
+    "domain_id",
+    "domain_name",
+    "version",
+    "entry_point",
+    "min_core_version",
+    "supported_data_types",
+    "checksum"
+  ],
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Manifest schema version — must match this schema's major version"
+    },
+    "domain_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Unique domain identifier — snake_case, matches runtime domain_id"
+    },
+    "domain_name": {
+      "type": "string",
+      "description": "Human-readable domain name"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "SemVer of this module release"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "description": "Brief description of the scientific domain module"
+    },
+    "entry_point": {
+      "type": "string",
+      "description": "Python entry point class path (e.g. 'polymer_science.domain_manifest:PolymerScienceDomain')"
+    },
+    "min_core_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Minimum ScientificState core version required — prevents incompatible installs"
+    },
+    "supported_data_types": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Data types this domain can process (e.g. ['mass_spec', 'dsc_thermal'])"
+    },
+    "taxonomy": {
+      "type": ["object", "null"],
+      "description": "Domain hierarchy metadata — NOT encoded in domain_id",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "Top-level scientific field (e.g. 'chemistry')"
+        },
+        "subfield": {
+          "type": ["string", "null"],
+          "description": "Subfield within the field (e.g. 'polymer_science')"
+        },
+        "specialization": {
+          "type": ["string", "null"],
+          "description": "Narrow specialization (e.g. 'characterization')"
+        }
+      }
+    },
+    "format_signatures": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/FormatSignature" },
+      "description": "File format signatures this module can detect and process — used by auto-detect"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ModuleDependency" },
+      "description": "Other ScientificState modules this module depends on"
+    },
+    "python_dependencies": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "PyPI package requirements (PEP 508 format)"
+    },
+    "author": {
+      "type": ["object", "null"],
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "orcid": {
+          "type": ["string", "null"],
+          "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$",
+          "description": "ORCID identifier for verified researcher identity"
+        }
+      },
+      "required": ["name"]
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier (e.g. 'MIT', 'Apache-2.0')"
+    },
+    "repository": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "Source code repository URL"
+    },
+    "checksum": {
+      "type": "object",
+      "required": ["algorithm", "value"],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["sha256", "sha512"],
+          "description": "Hash algorithm used for integrity verification"
+        },
+        "value": {
+          "type": "string",
+          "description": "Hex-encoded hash of the module package"
+        }
+      },
+      "description": "Integrity checksum for the module package — verified on install"
+    },
+    "signature": {
+      "type": ["object", "null"],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["ed25519", "rsa-pss-sha256"]
+        },
+        "public_key_id": {
+          "type": "string",
+          "description": "Key ID from TUF root metadata"
+        },
+        "value": {
+          "type": "string",
+          "description": "Base64-encoded signature over the checksum"
+        }
+      },
+      "required": ["algorithm", "public_key_id", "value"],
+      "description": "Cryptographic signature — M2'de zorunlu, unsigned modüller bloklanır"
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 publication timestamp"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "deprecated", "revoked", "archived"],
+      "default": "active",
+      "description": "Module lifecycle status"
+    },
+    "permissions": {
+      "$ref": "module-permission.schema.json",
+      "description": "Optional sandbox permissions — defaults to zero-access if omitted"
+    }
+  },
+  "$defs": {
+    "FormatSignature": {
+      "type": "object",
+      "required": ["format_id", "extensions"],
+      "properties": {
+        "format_id": {
+          "type": "string",
+          "description": "Unique format identifier (e.g. 'jcamp_dx', 'bruker_opus')"
+        },
+        "extensions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "File extensions (e.g. ['.dx', '.jdx'])"
+        },
+        "magic_bytes": {
+          "type": ["string", "null"],
+          "description": "Hex-encoded magic bytes for header detection"
+        },
+        "mime_type": {
+          "type": ["string", "null"],
+          "description": "MIME type if applicable"
+        }
+      }
+    },
+    "ModuleDependency": {
+      "type": "object",
+      "required": ["domain_id", "min_version"],
+      "properties": {
+        "domain_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "min_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        }
+      }
+    }
+  }
+}

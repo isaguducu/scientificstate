@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Add parent to path so imports work when running directly
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.routes import domains, health, ingest
+from src.routes import domains, health, ingest, modules, runs, workspaces
 from src.storage.schema import init_db
 
 logger = logging.getLogger("scientificstate.daemon")
@@ -84,7 +84,7 @@ app.add_middleware(
         "http://localhost:5173",  # Vite default
     ],
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Accept"],
 )
 
@@ -95,6 +95,9 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(domains.router)
 app.include_router(ingest.router)
+app.include_router(workspaces.router)
+app.include_router(runs.router)
+app.include_router(modules.router)
 
 
 # ---------------------------------------------------------------------------

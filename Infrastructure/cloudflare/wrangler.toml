@@ -1,0 +1,6 @@
+name = "scientificstate-modules"
+compatibility_date = "2024-01-01"
+
+[[r2_buckets]]
+binding = "MODULES_BUCKET"
+bucket_name = "scientificstate-modules"

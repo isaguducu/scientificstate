@@ -1,0 +1,22 @@
+{
+  "run_id": "qrun-001",
+  "status": "succeeded",
+  "compute_class": "quantum_sim",
+  "counts": {
+    "00": 512,
+    "11": 512
+  },
+  "statevector": [0.7071067811865476, 0, 0, 0.7071067811865476],
+  "execution_witness": {
+    "compute_class": "quantum_sim",
+    "backend_id": "aer_simulator",
+    "quantum_metadata": {
+      "shots": 1024,
+      "noise_model": "depolarizing_0.01",
+      "simulator": "aer",
+      "circuit_depth": 2,
+      "qubit_count": 2
+    }
+  },
+  "exploratory": true
+}

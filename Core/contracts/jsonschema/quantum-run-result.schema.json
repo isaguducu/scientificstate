@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scientificstate.org/schemas/quantum-run-result.schema.json",
+  "title": "QuantumRunResult",
+  "type": "object",
+  "required": ["run_id", "status", "compute_class"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "status": { "enum": ["succeeded", "failed", "pending"] },
+    "compute_class": { "const": "quantum_sim" },
+    "counts": { "type": "object", "additionalProperties": { "type": "integer" } },
+    "statevector": { "type": "array", "items": { "type": "number" } },
+    "execution_witness": {
+      "type": "object",
+      "properties": {
+        "compute_class": { "const": "quantum_sim" },
+        "backend_id": { "type": "string" },
+        "quantum_metadata": {
+          "type": "object",
+          "properties": {
+            "shots": { "type": "integer" },
+            "noise_model": { "type": "string" },
+            "simulator": { "type": "string" },
+            "circuit_depth": { "type": "integer" },
+            "qubit_count": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "exploratory": { "type": "boolean", "const": true }
+  }
+}

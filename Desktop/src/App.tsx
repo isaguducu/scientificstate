@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "@tanstack/react-router";
 import { DaemonStatus } from "./components/DaemonStatus";
 
 // Tauri IPC — gracefully falls back when running in browser (e.g. vite dev without tauri)
@@ -22,18 +23,31 @@ async function tauriInvoke<T>(cmd: string): Promise<T> {
 
 export { tauriInvoke };
 
-function App() {
+interface Props {
+  children?: React.ReactNode;
+}
+
+function App({ children }: Props) {
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-inner">
-          <span className="app-logo">⚗️ ScientificState</span>
+          <Link to="/" className="app-logo" style={{ textDecoration: "none", color: "inherit" }}>
+            ⚗️ ScientificState
+          </Link>
           <span className="app-tagline">authoritative scientific work surface</span>
+          <nav className="app-nav">
+            <Link to="/" className="app-nav-link">Dashboard</Link>
+            <Link to="/modules" className="app-nav-link">Modules</Link>
+          </nav>
+          <div style={{ marginLeft: "auto" }}>
+            <DaemonStatus />
+          </div>
         </div>
       </header>
 
       <main className="app-main">
-        <DaemonStatus />
+        {children}
       </main>
     </div>
   );
@@ -74,6 +88,23 @@ style.textContent = `
     font-size: 12px;
     color: var(--ss-text-muted);
     font-style: italic;
+  }
+  .app-nav {
+    display: flex;
+    gap: 8px;
+    margin-left: 16px;
+  }
+  .app-nav-link {
+    font-size: 13px;
+    color: var(--ss-text-muted);
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .app-nav-link:hover {
+    color: var(--ss-text);
+    background: var(--ss-surface-2);
   }
   .app-main {
     flex: 1;

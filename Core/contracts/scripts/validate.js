@@ -36,6 +36,14 @@ function run() {
     "ssv": loadJSON("jsonschema/ssv.schema.json"),
     "claim": loadJSON("jsonschema/claim.schema.json"),
     "domain-module": loadJSON("jsonschema/domain-module.schema.json"),
+    "module-manifest": loadJSON("jsonschema/module-manifest.schema.json"),
+    "compute-run-request": loadJSON("jsonschema/compute-run-request.schema.json"),
+    "compute-run-result": loadJSON("jsonschema/compute-run-result.schema.json"),
+    "module-permission": loadJSON("jsonschema/module-permission.schema.json"),
+    "module-store-entry": loadJSON("jsonschema/module-store-entry.schema.json"),
+    "module-publish-request": loadJSON("jsonschema/module-publish-request.schema.json"),
+    "quantum-run-request": loadJSON("jsonschema/quantum-run-request.schema.json"),
+    "quantum-run-result": loadJSON("jsonschema/quantum-run-result.schema.json"),
   };
 
   // Add all schemas to AJV registry first (enables cross-$ref resolution)
@@ -68,6 +76,46 @@ function run() {
       label: "domain-module",
       schema: schemas["domain-module"],
       fixture: loadJSON("tests/fixtures/sample-domain.json"),
+    },
+    {
+      label: "module-manifest",
+      schema: schemas["module-manifest"],
+      fixture: loadJSON("tests/fixtures/sample-module-manifest.json"),
+    },
+    {
+      label: "compute-run-request",
+      schema: schemas["compute-run-request"],
+      fixture: loadJSON("tests/fixtures/compute_run_request.json"),
+    },
+    {
+      label: "compute-run-result (success)",
+      schema: schemas["compute-run-result"],
+      fixture: loadJSON("tests/fixtures/compute_run_result_success.json"),
+    },
+    {
+      label: "compute-run-result (error)",
+      schema: schemas["compute-run-result"],
+      fixture: loadJSON("tests/fixtures/compute_run_result_error.json"),
+    },
+    {
+      label: "module-store-entry",
+      schema: schemas["module-store-entry"],
+      fixture: loadJSON("tests/fixtures/sample-module-store-entry.json"),
+    },
+    {
+      label: "module-publish-request",
+      schema: schemas["module-publish-request"],
+      fixture: loadJSON("tests/fixtures/sample-module-publish-request.json"),
+    },
+    {
+      label: "quantum-run-request",
+      schema: schemas["quantum-run-request"],
+      fixture: loadJSON("tests/fixtures/sample-quantum-run-request.json"),
+    },
+    {
+      label: "quantum-run-result",
+      schema: schemas["quantum-run-result"],
+      fixture: loadJSON("tests/fixtures/sample-quantum-run-result.json"),
     },
   ];
 

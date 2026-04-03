@@ -7,10 +7,10 @@ name = "scientificstate-framework"
 version = "0.1.0"
 description = "Domain-agnostic scientific state management framework"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["pydantic>=2.0", "cryptography>=42.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "pytest-cov"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.4.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["scientificstate"]

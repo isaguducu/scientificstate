@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scientificstate.org/schemas/quantum-run-request.schema.json",
+  "title": "QuantumRunRequest",
+  "type": "object",
+  "required": ["workspace_id", "circuit_qasm", "backend_hint"],
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "circuit_qasm": { "type": "string", "description": "OpenQASM 3.0 circuit string" },
+    "backend_hint": { "enum": ["simulator", "hardware"] },
+    "shots": { "type": "integer", "minimum": 1, "default": 1024 },
+    "noise_model": { "type": "string" },
+    "parameters": { "type": "object" }
+  }
+}

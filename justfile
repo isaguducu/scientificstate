@@ -69,3 +69,18 @@ lint-js:
 
 dev:
     cd Desktop && cargo tauri dev
+
+# ── Phase 1 smoke — all subsystems must pass ──────────────────────────────────
+
+phase1-smoke:
+    @echo "=== contracts ==="
+    cd Core/contracts && pnpm run validate && pnpm run build
+    @echo "=== framework ==="
+    cd Core/framework && uv run pytest -q
+    @echo "=== polymer ==="
+    cd Domains/polymer && uv run pytest -q
+    @echo "=== daemon ==="
+    cd Core/daemon && uv run pytest tests/ -q
+    @echo "=== desktop ==="
+    cd Desktop && npm run typecheck && npm run build
+    @echo "✅ Phase 1 smoke PASS"

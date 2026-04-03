@@ -1,0 +1,26 @@
+ScientificState
+Copyright 2026 ScientificState Contributors
+
+Original design and architecture by the ScientificState project founders.
+First commit: 2026-04-03 (phase0-baseline)
+
+This product includes software developed as part of the ScientificState project.
+
+Licensed under the Apache License, Version 2.0.
+You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
+---
+
+Core concepts originated in this project:
+
+- Scientific State Vector (SSV): 8-component epistemic state model (D, I, A, T, R, U, V, P)
+- ClaimStatus lifecycle: 7-state model (DRAFT → UNDER_REVIEW → PROVISIONALLY_SUPPORTED →
+  ENDORSABLE → ENDORSED → CONTESTED → RETRACTED)
+- DomainRegistry: discover_and_register() plugin architecture via importlib entry points
+- module-manifest contract: signed artifact distribution with TUF-backed revocation
+- Gate semantics: structured falsifiability + uncertainty + validity scope as schema-enforced fields
+
+These concepts are documented in:
+  9 Constitutional Principles/Docks/Main_Source.md
+  Core/contracts/jsonschema/
+  Core/framework/scientificstate/

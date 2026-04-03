@@ -50,6 +50,16 @@ class DomainModule(ABC):
     def supported_data_types(self) -> list[str]:
         """List of accepted data type identifiers. e.g. ['pygcms_csv', 'pygcms_txt']."""
 
+    @property
+    @abstractmethod
+    def version(self) -> str:
+        """SemVer version string. e.g. '0.1.0'."""
+
+    @property
+    def taxonomy(self) -> dict | None:
+        """Domain hierarchy metadata. Not encoded in domain_id. Optional."""
+        return None
+
     @abstractmethod
     def list_methods(self) -> list[dict]:
         """
@@ -81,6 +91,7 @@ class DomainModule(ABC):
         return {
             "domain_id": self.domain_id,
             "domain_name": self.domain_name,
+            "version": self.version,
             "supported_data_types": self.supported_data_types,
             "method_count": len(self.list_methods()),
         }

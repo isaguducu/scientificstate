@@ -80,7 +80,63 @@ CREATE TABLE IF NOT EXISTS compute_jobs (
 );
 """
 
-_ALL_DDL = [_CREATE_INGEST_EVENTS, _CREATE_DOMAINS, _CREATE_COMPUTE_JOBS]
+_CREATE_WORKSPACES = """
+CREATE TABLE IF NOT EXISTS workspaces (
+    -- Research workspaces — mutable metadata (not raw scientific data).
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+"""
+
+_CREATE_COMPUTE_RUNS = """
+CREATE TABLE IF NOT EXISTS compute_runs (
+    -- Daemon-level compute run records (maps to /runs endpoint).
+    -- Distinct from schema.sql runs (which requires question_id FK).
+    run_id        TEXT PRIMARY KEY,
+    workspace_id  TEXT NOT NULL,
+    domain_id     TEXT NOT NULL,
+    method_id     TEXT NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'pending',
+    started_at    TEXT,
+    finished_at   TEXT,
+    ssv_id        TEXT,
+    result_json   TEXT,
+    error_json    TEXT,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now', 'utc'))
+);
+"""
+
+_CREATE_SSV_RECORDS = """
+CREATE TABLE IF NOT EXISTS ssv_records (
+    -- Serialised SSV dicts produced by the pipeline (P2 — immutable).
+    ssv_id      TEXT PRIMARY KEY,
+    run_id      TEXT NOT NULL,
+    ssv_json    TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now', 'utc'))
+);
+"""
+
+_CREATE_CLAIM_RECORDS = """
+CREATE TABLE IF NOT EXISTS claim_records (
+    -- Draft claims produced by the pipeline (immutable provenance record).
+    claim_id    TEXT PRIMARY KEY,
+    run_id      TEXT NOT NULL,
+    claim_json  TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now', 'utc'))
+);
+"""
+
+_ALL_DDL = [
+    _CREATE_INGEST_EVENTS,
+    _CREATE_DOMAINS,
+    _CREATE_COMPUTE_JOBS,
+    _CREATE_WORKSPACES,
+    _CREATE_COMPUTE_RUNS,
+    _CREATE_SSV_RECORDS,
+    _CREATE_CLAIM_RECORDS,
+]
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +227,11 @@ async def upsert_domain(
 # ---------------------------------------------------------------------------
 # Read helpers
 # ---------------------------------------------------------------------------
+
+
+def get_db_path() -> Path:
+    """Return the daemon database path (public API for routes)."""
+    return _get_db_path()
 
 
 async def list_ingest_events(domain: str | None = None, limit: int = 100) -> list[dict[str, Any]]:

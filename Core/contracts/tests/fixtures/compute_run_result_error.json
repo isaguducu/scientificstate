@@ -1,0 +1,13 @@
+{
+  "run_id": "run-kmd-polymer-002",
+  "workspace_id": "ws-polymer-001",
+  "domain_id": "polymer_science",
+  "method_id": "kmd_analysis",
+  "status": "failed",
+  "started_at": "2026-04-04T09:05:00Z",
+  "finished_at": "2026-04-04T09:05:01Z",
+  "error": {
+    "error_code": "EXECUTION_ERROR",
+    "message": "KMD normalization failed: reference mass 104 not found in spectrum. Signal-to-noise ratio below threshold (SNR=1.8 < 3.0)."
+  }
+}

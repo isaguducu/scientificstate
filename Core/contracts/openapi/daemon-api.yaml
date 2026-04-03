@@ -32,6 +32,8 @@ tags:
     description: Scientific compute execution (M1 — classical backend)
   - name: workspaces
     description: Workspace management
+  - name: modules
+    description: Module trust chain — install, list, revocation (Phase1-B)
 
 paths:
   /health:
@@ -189,6 +191,407 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /runs:
+    post:
+      operationId: createRun
+      tags: [compute]
+      summary: Submit a compute run
+      description: |
+        Submits a domain compute run for execution. Returns immediately with run_id.
+        Constitutional constraint: daemon executes — researcher evaluates (P7).
+        Compute output is not a claim — it requires human review before claim creation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComputeRunRequest"
+      responses:
+        "202":
+          description: Run accepted — execution is asynchronous
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run_id]
+                properties:
+                  run_id:
+                    type: string
+                    description: Permanent run identifier — use with GET /runs/{run_id}
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Domain or method not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /runs/{run_id}:
+    get:
+      operationId: getRun
+      tags: [compute]
+      summary: Get compute run status and result
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Run status and result (if completed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComputeRunResult"
+        "404":
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /modules:
+    get:
+      operationId: listModules
+      tags: [modules]
+      summary: List installed modules
+      description: Returns all domain modules currently installed on this daemon instance.
+      responses:
+        "200":
+          description: Installed module list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleEntry"
+
+  /modules/available:
+    get:
+      operationId: listAvailableModules
+      tags: [modules]
+      summary: List modules available in the registry
+      description: |
+        Returns modules known to the registry (not necessarily installed).
+        Used by the Desktop Module Store UI.
+      responses:
+        "200":
+          description: Available module list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleEntry"
+
+  /modules/install:
+    post:
+      operationId: installModule
+      tags: [modules]
+      summary: Install a module
+      description: |
+        Installs a domain module after verifying its manifest signature.
+        Constitutional constraint: unsigned modules are ALWAYS rejected (Phase1-B).
+        Revoked modules are rejected before installation begins.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModuleInstallRequest"
+      responses:
+        "201":
+          description: Module installed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleInstallResult"
+        "400":
+          description: Invalid request, bad manifest, or checksum mismatch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Signature verification failed or module revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Module already installed at this version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /modules/{domain_id}:
+    get:
+      operationId: getModule
+      tags: [modules]
+      summary: Get installed module details
+      parameters:
+        - name: domain_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Module details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleEntry"
+        "404":
+          description: Module not installed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: removeModule
+      tags: [modules]
+      summary: Remove an installed module
+      description: |
+        Removes the module code directory.
+        Constitutional constraint (P9 — reversibility): SSV, claim, and run
+        data are NEVER deleted by module removal. data_preserved is always true.
+      parameters:
+        - name: domain_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Module removed (data preserved)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleRemoveResult"
+        "404":
+          description: Module not installed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /modules/search:
+    get:
+      operationId: searchModules
+      tags: [modules]
+      summary: Search modules in registry
+      description: Search the module registry by keyword or category.
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search query string
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by taxonomy field
+      responses:
+        "200":
+          description: Matching modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleEntry"
+
+  /modules/update:
+    post:
+      operationId: updateModule
+      tags: [modules]
+      summary: Update an installed module to a newer version
+      description: Downloads and verifies the latest version, then replaces the installed module.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain_id]
+              properties:
+                domain_id:
+                  type: string
+                target_version:
+                  type: string
+                  description: Specific version to update to — latest if omitted
+      responses:
+        "200":
+          description: Module updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleInstallResult"
+        "400":
+          description: Invalid request or downgrade attempted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Module not installed or version not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /modules/check-updates:
+    get:
+      operationId: checkModuleUpdates
+      tags: [modules]
+      summary: Check for available updates to installed modules
+      responses:
+        "200":
+          description: List of modules with available updates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [domain_id, installed_version, latest_version]
+                  properties:
+                    domain_id:
+                      type: string
+                    installed_version:
+                      type: string
+                    latest_version:
+                      type: string
+
+  /modules/suggest:
+    post:
+      operationId: suggestModules
+      tags: [modules]
+      summary: Auto-detect compatible domain modules for a file
+      description: |
+        Analyzes a file path and returns matching domain modules based on
+        format_signatures in module manifests. Does NOT install anything.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [file_path]
+              properties:
+                file_path:
+                  type: string
+                  description: Absolute local file path to analyze
+      responses:
+        "200":
+          description: Suggested modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleEntry"
+
+  /modules/package:
+    post:
+      operationId: packageModule
+      tags: [modules]
+      summary: Package and sign a local domain module
+      description: |
+        Creates a distributable tarball from a local domain module directory,
+        computes checksums, and signs the manifest. Publish is a portal operation — NOT daemon.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source_path]
+              properties:
+                source_path:
+                  type: string
+                  description: Local directory path containing the domain module
+                private_key_path:
+                  type: string
+                  description: Path to Ed25519 private key for signing
+      responses:
+        "200":
+          description: Module packaged and signed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tarball_path, tarball_hash, manifest_path]
+                properties:
+                  tarball_path:
+                    type: string
+                  tarball_hash:
+                    type: string
+                  manifest_path:
+                    type: string
+                  signature:
+                    type: string
+        "400":
+          description: Invalid module directory or missing manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /modules/revoke:
+    post:
+      operationId: revokeModule
+      tags: [modules]
+      summary: Revoke a module version
+      description: |
+        Marks a module version as revoked. Revoked modules cannot be installed
+        or activated. Existing installations are deactivated on next daemon restart.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain_id, version, reason]
+              properties:
+                domain_id:
+                  type: string
+                version:
+                  type: string
+                reason:
+                  type: string
+                  description: Human-readable revocation reason
+      responses:
+        "200":
+          description: Module revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, domain_id, version]
+                properties:
+                  success:
+                    type: boolean
+                  domain_id:
+                    type: string
+                  version:
+                    type: string
+        "404":
+          description: Module or version not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthResponse:
@@ -216,13 +619,17 @@ components:
       type: object
       description: |
         Shape matches Execution_Plan_Phase0.md §4.1 and DomainModule.describe() runtime output.
-        Plain list — no wrapper. Fields: domain_id, domain_name, supported_data_types, method_count.
-      required: [domain_id, domain_name, supported_data_types, method_count]
+        Plain list — no wrapper. Fields: domain_id, domain_name, version, supported_data_types, method_count.
+      required: [domain_id, domain_name, version, supported_data_types, method_count]
       properties:
         domain_id:
           type: string
         domain_name:
           type: string
+        version:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+          description: SemVer of the domain module
         supported_data_types:
           type: array
           items:
@@ -344,6 +751,134 @@ components:
           type: integer
         claim_count:
           type: integer
+
+    ComputeRunRequest:
+      type: object
+      required: [workspace_id, domain_id, method_id]
+      properties:
+        workspace_id:
+          type: string
+          description: Target workspace identifier
+        domain_id:
+          type: string
+          description: Domain module identifier (e.g. "polymer_science")
+        method_id:
+          type: string
+          description: Method identifier within the domain (e.g. "kmd_analysis")
+        dataset_ref:
+          type: string
+          description: raw_data_id from /datasets/ingest response
+        assumptions:
+          type: array
+          items:
+            type: object
+          description: "P3: explicit scientific assumptions for this run"
+        parameters:
+          type: object
+          description: Method-specific parameters
+        compute_class:
+          type: string
+          enum: [classical, quantum_sim, quantum_hw, hybrid]
+          description: "Optional compute class hint — defaults to classical if omitted"
+      additionalProperties: false
+
+    ComputeRunResult:
+      type: object
+      required: [run_id, workspace_id, domain_id, method_id, status, started_at]
+      properties:
+        run_id:
+          type: string
+        workspace_id:
+          type: string
+        domain_id:
+          type: string
+        method_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, succeeded, failed]
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        ssv_ref:
+          type: string
+          description: SSV id — only when status=succeeded
+        result:
+          type: object
+          description: Domain computation output — only when status=succeeded
+        execution_witness:
+          type: object
+          required: [compute_class, backend_id]
+          properties:
+            compute_class:
+              type: string
+              enum: [classical, quantum_sim, quantum_hw, hybrid]
+            backend_id:
+              type: string
+        error:
+          type: object
+          properties:
+            error_code:
+              type: string
+            message:
+              type: string
+          description: Error detail — only when status=failed
+      additionalProperties: false
+
+    ModuleEntry:
+      type: object
+      required: [domain_id, version, install_path]
+      properties:
+        domain_id:
+          type: string
+        version:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+        install_path:
+          type: string
+          description: Absolute path to the installed module directory
+
+    ModuleInstallRequest:
+      type: object
+      required: [manifest_b64, package_b64, public_key_b64]
+      properties:
+        manifest_b64:
+          type: string
+          description: Base64-encoded manifest JSON bytes
+        package_b64:
+          type: string
+          description: Base64-encoded module package bytes
+        public_key_b64:
+          type: string
+          description: Base64-encoded DER Ed25519 public key
+
+    ModuleInstallResult:
+      type: object
+      required: [success, domain_id, version]
+      properties:
+        success:
+          type: boolean
+        domain_id:
+          type: string
+        version:
+          type: string
+        install_path:
+          type: string
+
+    ModuleRemoveResult:
+      type: object
+      required: [success, domain_id, data_preserved]
+      properties:
+        success:
+          type: boolean
+        domain_id:
+          type: string
+        data_preserved:
+          type: boolean
+          description: Always true — SSV/claim data is never deleted (P9)
 
     ErrorResponse:
       type: object

@@ -1,0 +1,24 @@
+{
+  "workspace_id": "ws-polymer-001",
+  "domain_id": "polymer_science",
+  "method_id": "kmd_analysis",
+  "dataset_ref": "raw-data-gc-ms-001",
+  "assumptions": [
+    {
+      "assumption_id": "a-01",
+      "description": "Linear baseline assumption for KMD normalization",
+      "type": "background_model"
+    },
+    {
+      "assumption_id": "a-02",
+      "description": "Styrene fragment at m/z 104 is reference for KMD calculation",
+      "type": "signal_model"
+    }
+  ],
+  "parameters": {
+    "reference_unit": "CH2",
+    "reference_mass": 104,
+    "baseline_method": "rolling_ball",
+    "window": 50
+  }
+}

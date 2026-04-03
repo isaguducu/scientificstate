@@ -1,16 +1,17 @@
-"""GET /domains — list discovered scientific domains.
+"""Domain discovery endpoints.
 
-Response shape from Execution_Plan_Phase0.md §4.1:
-  [{"domain_id": ..., "domain_name": ..., "supported_data_types": [...], "method_count": N}]
+GET /domains              — list all registered domains (DomainSummary[])
+GET /domains/{domain_id}  — detail for one domain including methods (DomainDetail)
 
-Uses DomainModule.describe() from Core/framework (authoritative source).
+Response shapes match daemon-api.yaml DomainSummary / DomainDetail.
+Uses DomainModule.describe() + list_methods() from Core/framework.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request, status
 
 router = APIRouter(tags=["domains"])
 
@@ -20,10 +21,7 @@ async def list_domains(request: Request) -> Any:
     """
     Returns the list of domains loaded via framework DomainRegistry.
 
-    Each entry matches plan §4.1:
-      domain_id, domain_name, supported_data_types, method_count
-
-    Shape is a plain list (not wrapped) per plan example.
+    Shape is a plain list (not wrapped) — matches daemon-api.yaml DomainSummary[].
     """
     registry = getattr(request.app.state, "domain_registry", None)
     result: list[dict[str, Any]] = []
@@ -35,3 +33,35 @@ async def list_domains(request: Request) -> Any:
                 result.append(domain.describe())
 
     return result
+
+
+@router.get("/domains/{domain_id}", summary="Get domain module detail")
+async def get_domain(domain_id: str, request: Request) -> Any:
+    """
+    Returns DomainDetail for a single domain including its method manifests.
+
+    Response matches daemon-api.yaml DomainDetail:
+      domain_id, domain_name, version, supported_data_types, methods[]
+    404 if domain not registered.
+    """
+    registry = getattr(request.app.state, "domain_registry", None)
+    if registry is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Domain registry not available",
+        )
+
+    domain = registry.get(domain_id)
+    if domain is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Domain not found: {domain_id}",
+        )
+
+    return {
+        "domain_id": domain.domain_id,
+        "domain_name": domain.domain_name,
+        "version": domain.version,
+        "supported_data_types": domain.supported_data_types,
+        "methods": domain.list_methods(),
+    }

@@ -1,0 +1,48 @@
+{
+  "manifest_version": "1.0",
+  "domain_id": "polymer_science",
+  "domain_name": "Polymer Science",
+  "version": "0.1.0",
+  "description": "Polymer characterization and analysis domain — DSC, TGA, GPC, FTIR methods",
+  "entry_point": "polymer_science.domain_manifest:PolymerScienceDomain",
+  "min_core_version": "0.1.0",
+  "supported_data_types": ["dsc_thermal", "tga_thermal", "gpc_chromatography", "ftir_spectroscopy"],
+  "taxonomy": {
+    "field": "chemistry",
+    "subfield": "polymer_science",
+    "specialization": "characterization"
+  },
+  "format_signatures": [
+    {
+      "format_id": "jcamp_dx",
+      "extensions": [".dx", ".jdx"],
+      "magic_bytes": "23235449544c45",
+      "mime_type": "chemical/x-jcamp-dx"
+    },
+    {
+      "format_id": "csv_generic",
+      "extensions": [".csv"],
+      "magic_bytes": null,
+      "mime_type": "text/csv"
+    }
+  ],
+  "dependencies": [],
+  "python_dependencies": [
+    "numpy>=1.24",
+    "scipy>=1.10"
+  ],
+  "author": {
+    "name": "ScientificState Team",
+    "email": "dev@scientificstate.org",
+    "orcid": null
+  },
+  "license": "Apache-2.0",
+  "repository": "https://github.com/scientificstate/domain-polymer-science",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "signature": null,
+  "published_at": "2026-04-03T12:00:00Z",
+  "status": "active"
+}

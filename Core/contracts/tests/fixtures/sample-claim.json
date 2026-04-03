@@ -4,7 +4,7 @@
   "ssv_id": "ssv-polymer-ps-001",
   "ssv_refs": ["ssv-polymer-ps-001"],
   "text": "GC-MS KMD analysis identifies 5 distinct oligomeric clusters in the PS sample under specified measurement conditions",
-  "epistemic_status": "provisional",
+  "epistemic_status": "under_review",
   "what_would_change_this": "Independent replication using a different detector type showing different cluster count, or evidence of systematic bias in baseline removal algorithm",
   "status": "under_review",
   "gate_status": {

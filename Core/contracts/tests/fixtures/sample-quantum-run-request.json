@@ -1,0 +1,8 @@
+{
+  "workspace_id": "ws-quantum-001",
+  "circuit_qasm": "OPENQASM 3.0;\ninclude \"stdgates.inc\";\nqubit[2] q;\nbit[2] c;\nh q[0];\ncx q[0], q[1];\nc = measure q;",
+  "backend_hint": "simulator",
+  "shots": 1024,
+  "noise_model": "depolarizing_0.01",
+  "parameters": {}
+}
