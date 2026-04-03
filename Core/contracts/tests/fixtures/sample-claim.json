@@ -1,0 +1,43 @@
+{
+  "id": "claim-polymer-001",
+  "question_id": "q-polymer-001",
+  "ssv_id": "ssv-polymer-ps-001",
+  "ssv_refs": ["ssv-polymer-ps-001"],
+  "text": "GC-MS KMD analysis identifies 5 distinct oligomeric clusters in the PS sample under specified measurement conditions",
+  "epistemic_status": "provisional",
+  "what_would_change_this": "Independent replication using a different detector type showing different cluster count, or evidence of systematic bias in baseline removal algorithm",
+  "status": "under_review",
+  "gate_status": {
+    "E1_evidence": true,
+    "U1_uncertainty": true,
+    "V1_validity": false,
+    "C1_contradiction": true,
+    "H1_human": false
+  },
+  "evidence": [
+    {
+      "evidence_id": "ev-001",
+      "ssv_id": "ssv-polymer-ps-001",
+      "evidence_class": "same_pipeline_repeat",
+      "description": "Initial KMD analysis run"
+    }
+  ],
+  "uncertainty_summary": {
+    "status": "quantified",
+    "effective_epistemic_weight": "LOW",
+    "summary_text": "Single pipeline repeat only — independent replication absent"
+  },
+  "validity_scope": {
+    "description": "Valid for polystyrene samples analyzed by GC-MS in mass range 50-500 m/z with SNR >= 3.0",
+    "boundary_conditions": [
+      "SNR must be >= 3.0",
+      "Mass range: 50-500 m/z",
+      "Atmospheric pressure conditions"
+    ]
+  },
+  "contradictions": [],
+  "endorser_id": null,
+  "endorsed_at": null,
+  "created_at": "2026-04-01T11:00:00Z",
+  "updated_at": "2026-04-01T11:00:00Z"
+}

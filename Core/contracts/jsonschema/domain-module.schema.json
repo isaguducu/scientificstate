@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scientificstate.org/schemas/domain-module.schema.json",
+  "title": "DomainModule",
+  "description": "Pluggable science domain module contract — domain-agnostic interface for DomainRegistry (Execution_Plan_Phase0.md §2.2)",
+  "type": "object",
+  "required": ["domain_id", "domain_name", "version", "supported_data_types", "methods"],
+  "properties": {
+    "domain_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Unique domain identifier — snake_case, lowercase only"
+    },
+    "domain_name": {
+      "type": "string",
+      "description": "Human-readable domain name"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "SemVer of the domain module"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "description": "Brief description of the scientific domain"
+    },
+    "supported_data_types": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Data types this domain can process (e.g. ['mass_spec', 'dsc_thermal'])"
+    },
+    "methods": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/MethodManifest" },
+      "minItems": 1,
+      "description": "Computational methods provided by this domain"
+    },
+    "assumption_ontology": {
+      "type": ["object", "null"],
+      "description": "Domain-specific assumption vocabulary — must not bleed into Core/framework"
+    },
+    "validity_scopes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Validity scope identifiers this domain declares"
+    },
+    "entry_point": {
+      "type": ["string", "null"],
+      "description": "Python entry point class (e.g. 'polymer_science.domain_manifest:PolymerScienceDomain')"
+    },
+    "signed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this module artifact has been signed — required for production activation"
+    }
+  },
+  "$defs": {
+    "MethodManifest": {
+      "type": "object",
+      "required": [
+        "method_id",
+        "domain_id",
+        "name",
+        "required_data_types",
+        "produces_uncertainty",
+        "produces_validity_scope"
+      ],
+      "properties": {
+        "method_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Unique method identifier within the domain"
+        },
+        "domain_id": {
+          "type": "string",
+          "description": "Parent domain identifier — must match DomainModule.domain_id"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable method name"
+        },
+        "description": {
+          "type": ["string", "null"]
+        },
+        "required_data_types": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Data types this method requires as input"
+        },
+        "required_assumptions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Assumption IDs from assumption_ontology that must be declared"
+        },
+        "produces_uncertainty": {
+          "type": "boolean",
+          "const": true,
+          "description": "Must always be true — P4: uncertainty is mandatory"
+        },
+        "produces_validity_scope": {
+          "type": "boolean",
+          "const": true,
+          "description": "Must always be true — P5: validity domain is mandatory"
+        },
+        "compute_class": {
+          "type": "string",
+          "enum": ["classical", "ai_assisted", "quantum_simulator", "quantum_hardware", "hybrid"],
+          "description": "Compute substrate class for this method"
+        },
+        "quantum_contract": {
+          "oneOf": [
+            { "$ref": "#/$defs/QuantumContract" },
+            { "type": "null" }
+          ]
+        },
+        "parameters_schema": {
+          "type": ["object", "null"],
+          "description": "JSON Schema for method parameters — validated at invocation"
+        }
+      }
+    },
+    "QuantumContract": {
+      "type": "object",
+      "description": "Quantum extension — required when compute_class contains quantum (Step9 §9.7.5)",
+      "required": ["classical_baseline_required", "translation_fidelity_required"],
+      "properties": {
+        "classical_baseline_required": {
+          "type": "boolean",
+          "const": true,
+          "description": "Classical baseline must exist before quantum path reaches Endorsable"
+        },
+        "translation_fidelity_required": {
+          "type": "boolean",
+          "const": true
+        },
+        "problem_formulation": {
+          "type": ["string", "null"],
+          "description": "How the scientific problem maps to quantum formulation (QUBO, Hamiltonian, etc.)"
+        },
+        "semantic_loss_disclosure": {
+          "type": ["string", "null"],
+          "description": "Known semantic loss in problem-to-circuit translation"
+        }
+      }
+    }
+  }
+}

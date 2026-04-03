@@ -1,0 +1,5 @@
+packages:
+  - "Desktop"
+  - "Web"
+  - "Core/ui"
+  - "Core/contracts"

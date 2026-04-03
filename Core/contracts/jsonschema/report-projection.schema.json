@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scientificstate.org/schemas/report-projection.schema.json",
+  "title": "ReportProjection",
+  "description": "Desktop export ↔ Web upload contract. Single authoritative source for both workbench export and portal upload validation. Birebir: Main_Source_desktop.md §6.7 = Main_Source_web.md §9.1.",
+  "type": "object",
+  "required": [
+    "report_id",
+    "export_timestamp",
+    "workbench_version",
+    "projection_notice",
+    "question",
+    "claims",
+    "compute_records",
+    "provenance"
+  ],
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "description": "Globally unique report identifier"
+    },
+    "export_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 export timestamp"
+    },
+    "workbench_version": {
+      "type": "string",
+      "description": "Desktop workbench version that produced this projection"
+    },
+    "projection_notice": {
+      "type": "string",
+      "const": "THIS IS A PROJECTION — NOT THE AUTHORITATIVE SCIENTIFIC RECORD",
+      "description": "P8: publication is projection — always present, always visible"
+    },
+    "question": {
+      "$ref": "#/$defs/QuestionRef"
+    },
+    "claims": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ClaimProjection" }
+    },
+    "compute_records": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ComputeRecord" }
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    }
+  },
+  "$defs": {
+    "QuestionRef": {
+      "type": "object",
+      "required": ["id", "text", "domain", "created_at"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "domain": {
+          "type": "string",
+          "description": "Domain identifier: PS | PAN | ABS | PP | quantum_chemistry | ..."
+        },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ClaimProjection": {
+      "type": "object",
+      "required": [
+        "id",
+        "text",
+        "epistemic_status",
+        "what_would_change_this",
+        "gate_status",
+        "evidence",
+        "uncertainty_summary",
+        "validity_scope",
+        "contradictions"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "text": {
+          "type": "string",
+          "description": "Claim statement. Copy standard: no 'proven', 'definitive', 'the best', 'confirmed'."
+        },
+        "epistemic_status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "under_review",
+            "provisionally_supported",
+            "endorsable",
+            "endorsed",
+            "contested",
+            "retracted"
+          ],
+          "description": "7-state — matches claim lifecycle exactly. Dominant visual on claim card."
+        },
+        "what_would_change_this": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Falsification condition. Never empty — empty string causes report upload rejection."
+        },
+        "gate_status": {
+          "type": "object",
+          "required": ["E1_evidence", "U1_uncertainty", "V1_validity", "C1_contradiction", "H1_human"],
+          "properties": {
+            "E1_evidence": { "type": "boolean" },
+            "U1_uncertainty": { "type": "boolean" },
+            "V1_validity": { "type": "boolean" },
+            "C1_contradiction": { "type": "boolean" },
+            "H1_human": { "type": "boolean" }
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EvidenceItem" }
+        },
+        "uncertainty_summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "P4: mandatory — empty string causes export failure"
+        },
+        "validity_scope": {
+          "type": "string",
+          "minLength": 1,
+          "description": "P5: mandatory — empty string causes export failure"
+        },
+        "contradictions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Contradiction" },
+          "description": "Always present. Empty array allowed; open contradictions shown as red banner in portal."
+        }
+      }
+    },
+    "EvidenceItem": {
+      "type": "object",
+      "required": ["class", "ssv_ref", "summary"],
+      "properties": {
+        "class": {
+          "type": "string",
+          "enum": [
+            "independent_replication",
+            "cross_method",
+            "cross_lab_same_method",
+            "pipeline_variant",
+            "same_pipeline_repeat",
+            "simulator_only",
+            "hardware_confirmed"
+          ]
+        },
+        "ssv_ref": {
+          "type": "string",
+          "description": "SSV identifier this evidence item references"
+        },
+        "summary": {
+          "type": "string"
+        }
+      }
+    },
+    "Contradiction": {
+      "type": "object",
+      "required": ["description", "status"],
+      "properties": {
+        "description": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["open", "resolved"]
+        },
+        "resolution": {
+          "type": "string",
+          "description": "Optional — present when status=resolved"
+        }
+      }
+    },
+    "ComputeRecord": {
+      "type": "object",
+      "required": ["run_id", "module_id", "module_version", "execution_witness", "assumptions", "duration_ms"],
+      "properties": {
+        "run_id": { "type": "string" },
+        "module_id": { "type": "string" },
+        "module_version": { "type": "string" },
+        "execution_witness": { "$ref": "#/$defs/ExecutionWitness" },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "value"],
+            "properties": {
+              "key": { "type": "string" },
+              "value": { "type": "string" }
+            }
+          },
+          "description": "P3: assumptions used in this compute run — always recorded"
+        },
+        "duration_ms": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "ExecutionWitness": {
+      "type": "object",
+      "required": ["compute_class", "backend_id"],
+      "properties": {
+        "compute_class": {
+          "type": "string",
+          "enum": ["classical", "quantum_sim", "quantum_hw", "hybrid"]
+        },
+        "backend_id": { "type": "string" },
+        "classical_baseline_ref": {
+          "type": "string",
+          "description": "Required for quantum paths before reaching Endorsable (Step9 §9.7.5)"
+        },
+        "translation_fidelity": {
+          "type": "string",
+          "description": "Quantum: problem-to-circuit translation fidelity — visible in portal when present"
+        },
+        "semantic_loss_risk": {
+          "type": "string",
+          "description": "Quantum: semantic loss risk during problem-to-compute translation"
+        },
+        "compute_artifact_risk": {
+          "type": "string",
+          "description": "Quantum: risk that result is computation artifact rather than scientific finding"
+        },
+        "hardware_or_simulator_context": {
+          "type": "object",
+          "description": "Quantum: hardware/simulator context details"
+        }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "required": ["ssv_chain", "parent_refs", "rocrate_available"],
+      "properties": {
+        "ssv_chain": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "SSV IDs from root to leaf — full lineage"
+        },
+        "parent_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "rocrate_available": {
+          "type": "boolean",
+          "description": "Whether RO-Crate package is available for download"
+        }
+      }
+    }
+  }
+}

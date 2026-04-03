@@ -1,0 +1,1 @@
+{"main":{"identifier":"main","description":"Main window capabilities — localhost daemon access only.","local":true,"windows":["main"],"permissions":["core:default","shell:default","fs:default","dialog:default","notification:default","http:default"]}}

@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scientificstate.org/schemas/claim.schema.json",
+  "title": "Claim",
+  "description": "Scientific claim — lifecycle managed, gate evaluated, human endorsed (SCIENTIFIC_UI_COCKPIT_BLUEPRINT §5)",
+  "type": "object",
+  "required": [
+    "id",
+    "question_id",
+    "ssv_id",
+    "text",
+    "epistemic_status",
+    "what_would_change_this",
+    "status",
+    "gate_status",
+    "evidence",
+    "uncertainty_summary",
+    "validity_scope",
+    "contradictions",
+    "created_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique, permanent claim identifier"
+    },
+    "question_id": {
+      "type": "string",
+      "description": "Reference to the QuestionObject this claim addresses"
+    },
+    "ssv_id": {
+      "type": "string",
+      "description": "Primary SSV supporting this claim (Gate-E1)"
+    },
+    "ssv_refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Additional SSV references for this claim"
+    },
+    "text": {
+      "type": "string",
+      "description": "Human-readable claim statement — must not use 'proven', 'confirmed', 'final answer'"
+    },
+    "epistemic_status": {
+      "type": "string",
+      "enum": ["incomplete", "provisional", "contested", "endorsed"],
+      "description": "Current epistemic status — always visible (COCKPIT §2.3)"
+    },
+    "what_would_change_this": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Falsification condition — cannot be empty (COCKPIT §2.3)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "under_review",
+        "provisionally_supported",
+        "endorsable",
+        "endorsed",
+        "contested",
+        "retracted"
+      ],
+      "description": "7-state lifecycle — matches claim-lifecycle.schema.json"
+    },
+    "gate_status": {
+      "type": "object",
+      "required": ["E1_evidence", "U1_uncertainty", "V1_validity", "C1_contradiction", "H1_human"],
+      "properties": {
+        "E1_evidence": {
+          "type": "boolean",
+          "description": "Gate-E1: at least 1 traceable SSV reference"
+        },
+        "U1_uncertainty": {
+          "type": "boolean",
+          "description": "Gate-U1: uncertainty model present (required for under_review+)"
+        },
+        "V1_validity": {
+          "type": "boolean",
+          "description": "Gate-V1: validity scope declared (required for provisionally_supported+)"
+        },
+        "C1_contradiction": {
+          "type": "boolean",
+          "description": "Gate-C1: no unresolved critical contradictions (required for endorsed)"
+        },
+        "H1_human": {
+          "type": "boolean",
+          "description": "Gate-H1: signed human endorsement record exists (required for endorsed)"
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/EvidenceUnit" },
+      "description": "Evidence units supporting this claim — classified by epistemic weight"
+    },
+    "uncertainty_summary": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["quantified", "unquantifiable_with_reason"]
+        },
+        "effective_epistemic_weight": {
+          "type": "string",
+          "enum": ["VERY_LOW", "LOW", "MODERATE", "HIGH", "VERY_HIGH"]
+        },
+        "summary_text": { "type": ["string", "null"] }
+      }
+    },
+    "validity_scope": {
+      "type": "object",
+      "required": ["description"],
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Where and under what conditions this claim holds"
+        },
+        "boundary_conditions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "contradictions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Contradiction" },
+      "description": "Open and resolved contradictions — always present (empty array allowed)"
+    },
+    "endorser_id": {
+      "type": ["string", "null"],
+      "description": "User ID of endorser — non-null only when status=endorsed"
+    },
+    "endorsed_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "endorsement_record": {
+      "$ref": "#/$defs/EndorsementRecord",
+      "description": "Full endorsement details — required when status=endorsed (Gate-H1)"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "EvidenceUnit": {
+      "type": "object",
+      "required": ["evidence_id", "ssv_id", "evidence_class"],
+      "properties": {
+        "evidence_id": { "type": "string" },
+        "ssv_id": { "type": "string" },
+        "evidence_class": {
+          "type": "string",
+          "enum": [
+            "independent_replication",
+            "cross_method",
+            "cross_lab_same_method",
+            "pipeline_variant",
+            "same_pipeline_repeat",
+            "simulator_only",
+            "hardware_confirmed"
+          ],
+          "description": "Epistemic weight class — not just count (COCKPIT §6)"
+        },
+        "description": { "type": ["string", "null"] }
+      }
+    },
+    "Contradiction": {
+      "type": "object",
+      "required": ["description", "status"],
+      "properties": {
+        "description": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["open", "resolved"]
+        },
+        "resolution": {
+          "type": ["string", "null"],
+          "description": "Required if status=resolved"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "moderate", "minor"]
+        }
+      }
+    },
+    "EndorsementRecord": {
+      "type": "object",
+      "required": [
+        "endorsement_id",
+        "endorser_id",
+        "role",
+        "scope",
+        "strength",
+        "endorsed_at",
+        "revisit_trigger"
+      ],
+      "properties": {
+        "endorsement_id": { "type": "string" },
+        "endorser_id": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": ["PI", "Reviewer", "Team", "External"]
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["full", "method-only", "data-only", "conditional"]
+        },
+        "strength": {
+          "type": "string",
+          "enum": ["accepted", "conditional", "exploratory"]
+        },
+        "endorsed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revisit_trigger": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What new evidence would trigger endorsement review — cannot be empty"
+        },
+        "expiry_condition": {
+          "type": ["string", "null"]
+        },
+        "conditions": {
+          "type": ["string", "null"],
+          "description": "Required if strength=conditional"
+        }
+      }
+    }
+  }
+}

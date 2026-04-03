@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scientificstate.org/schemas/claim-lifecycle.schema.json",
+  "title": "ClaimLifecycle",
+  "description": "Claim lifecycle state machine — 7 state, gate-based transitions (SCIENTIFIC_UI_COCKPIT_BLUEPRINT §5.1)",
+  "type": "object",
+  "required": ["status"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "under_review",
+        "provisionally_supported",
+        "endorsable",
+        "endorsed",
+        "contested",
+        "retracted"
+      ],
+      "description": "Current lifecycle state of the claim"
+    },
+    "previous_status": {
+      "type": ["string", "null"],
+      "enum": [
+        "draft",
+        "under_review",
+        "provisionally_supported",
+        "endorsable",
+        "endorsed",
+        "contested",
+        "retracted",
+        null
+      ],
+      "description": "Previous state before most recent transition"
+    },
+    "transitioned_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Timestamp of most recent state transition"
+    },
+    "transition_reason": {
+      "type": ["string", "null"],
+      "description": "Human-readable reason for the transition"
+    },
+    "gate_policy_version": {
+      "type": ["string", "null"],
+      "description": "Version of gate policy applied at transition time"
+    }
+  },
+  "$defs": {
+    "ValidTransitions": {
+      "description": "Allowed state transitions — must be enforced by runtime, not schema alone",
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "array",
+          "items": { "enum": ["under_review", "contested"] },
+          "description": "Gate-E1: minimum evidence required"
+        },
+        "under_review": {
+          "type": "array",
+          "items": { "enum": ["provisionally_supported", "contested"] },
+          "description": "Gate-U1: uncertainty must be present"
+        },
+        "provisionally_supported": {
+          "type": "array",
+          "items": { "enum": ["endorsable", "contested"] },
+          "description": "Gate-V1: validity scope must be declared"
+        },
+        "endorsable": {
+          "type": "array",
+          "items": { "enum": ["endorsed", "contested"] },
+          "description": "Gate-C1: no unresolved critical contradictions; Gate-H1: signed endorsement"
+        },
+        "endorsed": {
+          "type": "array",
+          "items": { "enum": ["contested"] },
+          "description": "Only new contradiction or evidence can trigger contest"
+        },
+        "contested": {
+          "type": "array",
+          "items": { "enum": ["endorsable", "retracted"] },
+          "description": "Contradiction resolved → endorsable; irresolvable → retracted"
+        },
+        "retracted": {
+          "type": "array",
+          "items": {},
+          "maxItems": 0,
+          "description": "Terminal state — no further transitions"
+        }
+      }
+    }
+  }
+}

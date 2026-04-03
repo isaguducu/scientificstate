@@ -1,0 +1,7 @@
+{
+  "status": "under_review",
+  "previous_status": "draft",
+  "transitioned_at": "2026-04-03T10:00:00Z",
+  "transition_reason": "Minimum evidence linked (Gate-E1 passed)",
+  "gate_policy_version": "1.0.0"
+}

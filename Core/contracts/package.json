@@ -1,0 +1,20 @@
+{
+  "name": "@scientificstate/contracts",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "ScientificState shared JSON Schema contracts and OpenAPI specifications",
+  "scripts": {
+    "build": "pnpm run generate:ts",
+    "validate": "node scripts/validate.js",
+    "validate:schemas": "node scripts/validate.js",
+    "generate:ts": "node scripts/generate-types.js",
+    "lint": "echo 'no lint configured for contracts'",
+    "test": "node scripts/validate.js"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "json-schema-to-typescript": "^14.0.0"
+  }
+}

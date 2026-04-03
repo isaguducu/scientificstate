@@ -1,0 +1,53 @@
+{
+  "domain_id": "polymer_science",
+  "domain_name": "Polymer Science",
+  "version": "0.1.0",
+  "description": "Domain module for polymer characterization — GC-MS, DSC, KMD, PCA, HCA, deisotoping",
+  "supported_data_types": ["mass_spec_gcms", "dsc_thermal", "ftir"],
+  "methods": [
+    {
+      "method_id": "kmd_analysis",
+      "domain_id": "polymer_science",
+      "name": "KMD (Kendrick Mass Defect) Analysis",
+      "description": "Cluster-based oligomeric structure identification via KMD normalization",
+      "required_data_types": ["mass_spec_gcms"],
+      "required_assumptions": ["baseline_model", "reference_unit"],
+      "produces_uncertainty": true,
+      "produces_validity_scope": true,
+      "compute_class": "classical",
+      "quantum_contract": null,
+      "parameters_schema": {
+        "type": "object",
+        "required": ["reference_unit", "reference_mass"],
+        "properties": {
+          "reference_unit": { "type": "string" },
+          "reference_mass": { "type": "number" }
+        }
+      }
+    },
+    {
+      "method_id": "pca_clustering",
+      "domain_id": "polymer_science",
+      "name": "PCA + HCA Clustering",
+      "description": "Principal component analysis followed by hierarchical cluster analysis",
+      "required_data_types": ["mass_spec_gcms", "ftir"],
+      "required_assumptions": ["normalization_method"],
+      "produces_uncertainty": true,
+      "produces_validity_scope": true,
+      "compute_class": "classical",
+      "quantum_contract": null,
+      "parameters_schema": null
+    }
+  ],
+  "assumption_ontology": {
+    "baseline_model": "Model for background/baseline characterization",
+    "reference_unit": "Reference repeat unit for KMD normalization",
+    "normalization_method": "Method for data normalization before clustering"
+  },
+  "validity_scopes": [
+    "gc_ms_standard_conditions",
+    "dsc_nitrogen_atmosphere"
+  ],
+  "entry_point": "polymer_science.domain_manifest:PolymerScienceDomain",
+  "signed": false
+}

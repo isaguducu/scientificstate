@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+ENV/
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+out/
+.npm
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Storage (raw data should not be in git)
+storage/raw_data/*
+!storage/raw_data/.gitkeep
+storage/exports/*
+!storage/exports/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Misc
+*.log
+*.tmp
+
+# Rust / Tauri
+target/
+*.rlib
+
+# Python uv / ruff
+.uv/
+uv.lock
+.ruff_cache/
+.mypy_cache/
+
+# Turbo
+.turbo/
+*.tsbuildinfo
+
+# Local scientific state (SQLite, immutable store)
+*.sqlite
+*.db
+local_state/
+
+# Build artifacts
+*.whl
+*.tar.gz

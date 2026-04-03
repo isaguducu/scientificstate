@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scientificstate.org/schemas/ssv.schema.json",
+  "title": "ScientificStateVector",
+  "description": "Scientific State Vector — immutable, atomic 8-component scientific state (SSV_Lifecycle_Step1.md)",
+  "type": "object",
+  "required": ["id", "version", "d", "i", "a", "t", "r", "u", "v", "p"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique, permanent SSV identifier — never reused"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing version within lineage"
+    },
+    "parent_ssv_id": {
+      "type": ["string", "null"],
+      "description": "Parent SSV reference — null for root states"
+    },
+    "d": {
+      "$ref": "#/$defs/DataReference",
+      "description": "Raw observational data reference (D) — immutable, never inline"
+    },
+    "i": {
+      "$ref": "#/$defs/InstrumentConfig",
+      "description": "Instrument and measurement configuration (I)"
+    },
+    "a": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Assumption" },
+      "minItems": 1,
+      "description": "Explicit scientific assumptions (A) — cannot be empty (P3)"
+    },
+    "t": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Transform" },
+      "minItems": 1,
+      "description": "Ordered transformation chain (T)"
+    },
+    "r": {
+      "$ref": "#/$defs/InferenceResults",
+      "description": "Inference results (R) — derived scientific quantities"
+    },
+    "u": {
+      "$ref": "#/$defs/UncertaintyModel",
+      "description": "Uncertainty model (U) — mandatory (P4)"
+    },
+    "v": {
+      "$ref": "#/$defs/ValidityDomain",
+      "description": "Validity domain (V) — mandatory (P5)"
+    },
+    "p": {
+      "$ref": "#/$defs/Provenance",
+      "description": "Provenance (P) — who, when, software versions, execution witness"
+    }
+  },
+  "$defs": {
+    "DataReference": {
+      "type": "object",
+      "required": ["raw_data_id", "acquisition_timestamp", "signal_metadata"],
+      "properties": {
+        "raw_data_id": {
+          "type": "string",
+          "description": "Permanent identifier in Raw Data Custody Layer"
+        },
+        "acquisition_timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "signal_metadata": {
+          "type": "object",
+          "description": "Units, dynamic range, instrument identifier, sample identifier"
+        }
+      }
+    },
+    "InstrumentConfig": {
+      "type": "object",
+      "required": ["instrument_id", "measurement_mode"],
+      "properties": {
+        "instrument_id": { "type": "string" },
+        "measurement_mode": { "type": "string" },
+        "resolution": { "type": "object" },
+        "dynamic_range": { "type": "object" },
+        "detector_type": { "type": "string" },
+        "calibration_state": { "type": "object" }
+      }
+    },
+    "Assumption": {
+      "type": "object",
+      "required": ["assumption_id", "description", "type"],
+      "properties": {
+        "assumption_id": { "type": "string" },
+        "description": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["background_model", "signal_model", "domain_constraint", "confound"]
+        },
+        "domain": { "type": "string" }
+      }
+    },
+    "Transform": {
+      "type": "object",
+      "required": ["step_id", "operation", "parameters"],
+      "properties": {
+        "step_id": { "type": "integer", "minimum": 1 },
+        "operation": { "type": "string" },
+        "parameters": { "type": "object" },
+        "software": { "type": "string" },
+        "software_version": { "type": "string" }
+      }
+    },
+    "InferenceResults": {
+      "type": "object",
+      "required": ["status", "quantities"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["derived", "no_signal", "ambiguous_assignment", "invalid_inference"],
+          "description": "Failure-state SSV contract — failure must still produce complete SSV"
+        },
+        "quantities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "value", "unit"],
+            "properties": {
+              "name": { "type": "string" },
+              "value": {},
+              "unit": { "type": "string" }
+            }
+          }
+        },
+        "classifications": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "UncertaintyModel": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["quantified", "unquantifiable_with_reason"],
+          "description": "P4: uncertainty is mandatory — if unquantifiable, reason must be stated"
+        },
+        "measurement_uncertainty": { "type": "object" },
+        "propagated_uncertainty": { "type": "object" },
+        "confidence_intervals": { "type": "array", "items": { "type": "object" } },
+        "systematic_bias": { "type": "object" },
+        "reason_if_unquantifiable": { "type": ["string", "null"] }
+      }
+    },
+    "ValidityDomain": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["valid", "boundary", "invalid_domain"],
+          "description": "P5: validity domain is mandatory"
+        },
+        "valid_signal_range": { "type": "object" },
+        "assumption_applicability": { "type": "string" },
+        "model_breakdown_conditions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "required": ["user_id", "created_at", "software_stack"],
+      "properties": {
+        "user_id": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "parent_ssv_id": { "type": ["string", "null"] },
+        "software_stack": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "version"],
+            "properties": {
+              "name": { "type": "string" },
+              "version": { "type": "string" }
+            }
+          },
+          "minItems": 1
+        },
+        "execution_witness": {
+          "type": "object",
+          "description": "Compute execution record — see report-projection.schema.json#/$defs/ExecutionWitness for canonical definition",
+          "required": ["compute_class", "backend_id"],
+          "properties": {
+            "compute_class": {
+              "type": "string",
+              "enum": ["classical", "quantum_sim", "quantum_hw", "hybrid"]
+            },
+            "backend_id": { "type": "string" },
+            "classical_baseline_ref": { "type": "string" },
+            "translation_fidelity": { "type": "string" },
+            "semantic_loss_risk": { "type": "string" },
+            "compute_artifact_risk": { "type": "string" },
+            "hardware_or_simulator_context": { "type": "object" }
+          }
+        }
+      }
+    }
+  }
+}

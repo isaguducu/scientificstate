@@ -1,0 +1,357 @@
+openapi: "3.1.0"
+info:
+  title: ScientificState Local Daemon API
+  version: "0.1.0"
+  description: |
+    Local execution daemon API — localhost only.
+    The daemon performs scientific computation; it does NOT assert scientific claims.
+    All compute outputs require researcher review before claim evaluation.
+
+    Constitutional boundaries:
+    - P7: Non-delegation of scientific authority — daemon executes, human evaluates
+    - P1: Raw data immutability — daemon never mutates stored data
+    - Localhost boundary: No remote daemon access in M1
+  contact:
+    name: ScientificState
+    url: https://scientificstate.org
+  license:
+    name: Constitutional Science Infrastructure License
+
+servers:
+  - url: "http://127.0.0.1:9473"
+    description: Local daemon (Execution_Plan_Phase0.md §4.1 — port 9473)
+
+tags:
+  - name: health
+    description: Daemon health and status
+  - name: domains
+    description: Domain module discovery and management
+  - name: datasets
+    description: Dataset ingestion (M1 — local only)
+  - name: compute
+    description: Scientific compute execution (M1 — classical backend)
+  - name: workspaces
+    description: Workspace management
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Daemon health check
+      description: Returns daemon status and loaded domain modules. Used by Desktop to verify daemon is running.
+      responses:
+        "200":
+          description: Daemon is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: Daemon is starting or unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /domains:
+    get:
+      operationId: listDomains
+      tags: [domains]
+      summary: List loaded domain modules
+      description: |
+        Returns all domain modules currently registered via DomainRegistry.
+        Domain modules are discovered via Python entry_points(group='scientificstate.domains').
+      responses:
+        "200":
+          description: Loaded domains list — plain array (not wrapped)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DomainSummary"
+
+  /domains/{domain_id}:
+    get:
+      operationId: getDomain
+      tags: [domains]
+      summary: Get domain module details
+      parameters:
+        - name: domain_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Domain module details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainDetail"
+        "404":
+          description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /datasets/ingest:
+    post:
+      operationId: ingestDataset
+      tags: [datasets]
+      summary: Ingest a raw dataset
+      description: |
+        Ingests raw observational data into the local immutable store.
+        Assigned a permanent raw_data_id.
+        Constitutional constraint: once stored, data cannot be altered (P1).
+        This endpoint only accepts data — it does not perform any analysis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestRequest"
+      responses:
+        "201":
+          description: Dataset ingested successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "400":
+          description: Invalid request or missing required metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Duplicate dataset (same content hash already stored)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /workspaces:
+    get:
+      operationId: listWorkspaces
+      tags: [workspaces]
+      summary: List workspaces
+      responses:
+        "200":
+          description: Workspace list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspacesResponse"
+
+    post:
+      operationId: createWorkspace
+      tags: [workspaces]
+      summary: Create a new workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkspaceRequest"
+      responses:
+        "201":
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetail"
+
+  /workspaces/{workspace_id}:
+    get:
+      operationId: getWorkspace
+      tags: [workspaces]
+      summary: Get workspace details
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Workspace details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceDetail"
+        "404":
+          description: Workspace not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, version, uptime_seconds, active_runs, loaded_domains]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, starting]
+        version:
+          type: string
+          description: Daemon version string (e.g. "0.1.0")
+        uptime_seconds:
+          type: number
+        active_runs:
+          type: integer
+          description: Number of currently executing compute runs
+        loaded_domains:
+          type: array
+          items:
+            type: string
+          description: domain_id list of registered domains
+
+    DomainSummary:
+      type: object
+      description: |
+        Shape matches Execution_Plan_Phase0.md §4.1 and DomainModule.describe() runtime output.
+        Plain list — no wrapper. Fields: domain_id, domain_name, supported_data_types, method_count.
+      required: [domain_id, domain_name, supported_data_types, method_count]
+      properties:
+        domain_id:
+          type: string
+        domain_name:
+          type: string
+        supported_data_types:
+          type: array
+          items:
+            type: string
+          description: Data types this domain can process (e.g. ["mass_spec_gcms", "dsc_thermal"])
+        method_count:
+          type: integer
+
+    DomainDetail:
+      type: object
+      required: [domain_id, domain_name, version, supported_data_types, methods]
+      properties:
+        domain_id:
+          type: string
+        domain_name:
+          type: string
+        version:
+          type: string
+        supported_data_types:
+          type: array
+          items:
+            type: string
+        methods:
+          type: array
+          items:
+            type: object
+            required: [method_id, name, produces_uncertainty, produces_validity_scope]
+            properties:
+              method_id:
+                type: string
+              name:
+                type: string
+              produces_uncertainty:
+                type: boolean
+              produces_validity_scope:
+                type: boolean
+              compute_class:
+                type: string
+
+    IngestRequest:
+      type: object
+      required: [data_path, acquisition_timestamp, instrument_id, domain_id, sample_id]
+      properties:
+        data_path:
+          type: string
+          description: Absolute local file path to raw data
+        acquisition_timestamp:
+          type: string
+          format: date-time
+        instrument_id:
+          type: string
+        domain_id:
+          type: string
+          description: Which domain this data belongs to
+        sample_id:
+          type: string
+        signal_metadata:
+          type: object
+          description: Units, dynamic range, additional annotations
+
+    IngestResponse:
+      type: object
+      required: [raw_data_id, content_hash, stored_at]
+      properties:
+        raw_data_id:
+          type: string
+          description: Permanent identifier — never reused, never deleted
+        content_hash:
+          type: string
+          description: SHA-256 content hash for integrity verification
+        stored_at:
+          type: string
+          format: date-time
+
+    WorkspacesResponse:
+      type: object
+      required: [workspaces]
+      properties:
+        workspaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkspaceSummary"
+
+    WorkspaceSummary:
+      type: object
+      required: [workspace_id, name, created_at]
+      properties:
+        workspace_id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateWorkspaceRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    WorkspaceDetail:
+      type: object
+      required: [workspace_id, name, created_at, ssv_count, claim_count]
+      properties:
+        workspace_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        ssv_count:
+          type: integer
+        claim_count:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        detail:
+          type: object

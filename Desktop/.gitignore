@@ -1,0 +1,14 @@
+# Node
+node_modules/
+dist/
+.turbo/
+
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/WixTools/
+
+# Vite
+*.local
+
+# OS
+.DS_Store

@@ -1,0 +1,59 @@
+{
+  "report_id": "report-polymer-2026-04-01",
+  "export_timestamp": "2026-04-01T12:00:00Z",
+  "workbench_version": "0.1.0",
+  "projection_notice": "THIS IS A PROJECTION — NOT THE AUTHORITATIVE SCIENTIFIC RECORD",
+  "question": {
+    "id": "q-polymer-001",
+    "text": "What oligomeric cluster structure does the PS sample exhibit under GC-MS KMD analysis?",
+    "domain": "PS",
+    "created_at": "2026-04-01T09:00:00Z"
+  },
+  "claims": [
+    {
+      "id": "claim-polymer-001",
+      "text": "GC-MS KMD analysis identifies 5 distinct oligomeric clusters in the PS sample under specified measurement conditions",
+      "epistemic_status": "under_review",
+      "what_would_change_this": "Independent replication using a different detector type showing different cluster count, or evidence of systematic bias in baseline removal algorithm",
+      "gate_status": {
+        "E1_evidence": true,
+        "U1_uncertainty": true,
+        "V1_validity": false,
+        "C1_contradiction": true,
+        "H1_human": false
+      },
+      "evidence": [
+        {
+          "class": "same_pipeline_repeat",
+          "ssv_ref": "ssv-polymer-ps-001",
+          "summary": "Initial KMD analysis run — single pipeline repeat"
+        }
+      ],
+      "uncertainty_summary": "Measurement uncertainty ±2.5% noise floor; KMD cluster count 95% CI: [4, 6]. Single pipeline repeat only — independent replication absent.",
+      "validity_scope": "Valid for polystyrene samples analyzed by GC-MS in mass range 50-500 m/z with SNR >= 3.0 under atmospheric pressure conditions.",
+      "contradictions": []
+    }
+  ],
+  "compute_records": [
+    {
+      "run_id": "run-kmd-001",
+      "module_id": "kmd_analysis",
+      "module_version": "0.1.0",
+      "execution_witness": {
+        "compute_class": "classical",
+        "backend_id": "local-python-cpu"
+      },
+      "assumptions": [
+        { "key": "baseline_model", "value": "rolling_ball_window_50" },
+        { "key": "reference_unit", "value": "CH2" },
+        { "key": "reference_mass", "value": "104" }
+      ],
+      "duration_ms": 2300
+    }
+  ],
+  "provenance": {
+    "ssv_chain": ["ssv-polymer-ps-001"],
+    "parent_refs": [],
+    "rocrate_available": false
+  }
+}
