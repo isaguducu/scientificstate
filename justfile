@@ -289,8 +289,6 @@ phase8-smoke:
     cd Core/daemon && uv run pytest tests/test_integration_phase8.py -q
     @echo "=== performance ==="
     cd Core/daemon && uv run pytest tests/test_performance_benchmark.py -q
-    @echo "=== web build ==="
-    cd Web && npm run build
     @echo "=== desktop ==="
     cd Desktop && npm run typecheck && npm run build
     @echo "=== shared ui ==="
@@ -302,3 +300,54 @@ phase8-smoke:
     @echo "=== plugin sdk ==="
     cd packages/create-ss-domain && npm test
     @echo "✅ Phase 8 smoke PASS"
+
+# ── Public smoke — runs only public repo components (no Web/) ────────────
+
+phase8-smoke-public:
+    @echo "=== contracts ==="
+    cd Core/contracts && pnpm run validate && pnpm run build
+    @echo "=== framework tests ==="
+    cd Core/framework && uv run pytest -q
+    @echo "=== framework lint ==="
+    cd Core/framework && uv run ruff check .
+    @echo "=== domain tests ==="
+    cd Domains/polymer && uv run pytest -q
+    cd Domains/materials && uv run pytest -q
+    cd Domains/biology && uv run pytest -q
+    cd Domains/chemistry && uv run pytest -q
+    @echo "=== daemon tests ==="
+    cd Core/daemon && uv run pytest tests/ -q
+    @echo "=== daemon lint ==="
+    cd Core/daemon && uv run ruff check .
+    @echo "=== quantum hw ==="
+    cd Core/daemon && uv run pytest tests/test_quantum_hw_backend.py tests/test_qpu_resilience.py -q
+    @echo "=== hybrid backend ==="
+    cd Core/daemon && uv run pytest tests/test_hybrid_backend.py -q
+    @echo "=== cost gate ==="
+    cd Core/daemon && uv run pytest tests/test_cost_gate.py -q
+    @echo "=== replication ==="
+    cd Core/daemon && uv run pytest tests/test_replication_routes.py -q
+    @echo "=== federation governance ==="
+    cd Core/daemon && uv run pytest tests/test_federation_governance.py -q
+    @echo "=== integration ==="
+    cd Core/daemon && uv run pytest tests/test_integration_phase8.py -q
+    @echo "=== performance ==="
+    cd Core/daemon && uv run pytest tests/test_performance_benchmark.py -q
+    @echo "=== desktop ==="
+    cd Desktop && npm run typecheck && npm run build
+    @echo "=== shared ui ==="
+    cd Core/ui && npm run build
+    @echo "=== mobile ==="
+    cd Mobile && npx expo export --platform web
+    @echo "=== i18n check ==="
+    node scripts/check-i18n-keys.js
+    @echo "=== plugin sdk ==="
+    cd packages/create-ss-domain && npm test
+    @echo "✅ Phase 8 PUBLIC smoke PASS"
+
+# ── Private smoke — Web portal only (runs in private repo) ───────────────
+
+phase8-smoke-private:
+    @echo "=== web build ==="
+    cd Web && npm run build
+    @echo "✅ Phase 8 PRIVATE smoke PASS"

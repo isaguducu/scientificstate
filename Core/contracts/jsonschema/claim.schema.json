@@ -137,6 +137,12 @@
       "items": { "$ref": "#/$defs/Contradiction" },
       "description": "Open and resolved contradictions — always present (empty array allowed)"
     },
+    "trust_tier": {
+      "type": "string",
+      "enum": ["local_unverified", "community_signed", "scientificstate_verified"],
+      "default": "local_unverified",
+      "description": "Trust tier — local_unverified (default), community_signed (cross-user verification), scientificstate_verified (official federation + institutional attestation)"
+    },
     "endorser_id": {
       "type": ["string", "null"],
       "description": "User ID of endorser — non-null only when status=endorsed"
