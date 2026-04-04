@@ -10,15 +10,26 @@ IonQ API docs: https://docs.ionq.com/api-reference
 from __future__ import annotations
 
 import logging
+import os
 import time
+import uuid
 
 from .credential import CredentialError, require_ionq_token
 
 logger = logging.getLogger("scientificstate.daemon.quantum_hw.ionq")
 
 _IONQ_BASE_URL = "https://api.ionq.co/v0.3"
-_POLL_INTERVAL_S = 2.0
-_MAX_POLL_ATTEMPTS = 300  # 10 minutes max wait
+
+# ---------------------------------------------------------------------------
+# Configurable polling & timeout via environment
+# ---------------------------------------------------------------------------
+IONQ_MAX_POLL_ATTEMPTS = int(os.environ.get("IONQ_MAX_POLL_ATTEMPTS", "300"))
+IONQ_POLL_INTERVAL = int(os.environ.get("IONQ_POLL_INTERVAL_SECONDS", "2"))
+IONQ_TIMEOUT = int(os.environ.get("IONQ_TIMEOUT_SECONDS", "600"))
+
+# Transient HTTP status codes eligible for submit retry
+_TRANSIENT_HTTP_CODES = {429, 500, 502, 503}
+_MAX_SUBMIT_RETRIES = 3
 
 
 class IonQBackend:
@@ -50,54 +61,104 @@ class IonQBackend:
             target: IonQ target device (default: qpu.harmony).
 
         Returns:
-            Result dict with counts, quantum_metadata, and exploratory=True.
+            Result dict with counts, execution_witness, and exploratory=True.
 
         Raises:
             CredentialError: If IONQ_TOKEN is not set.
         """
         import requests
 
+        run_id = str(uuid.uuid4())
         token = require_ionq_token()
+        # Security: log only token length, never the value
+        logger.debug("IONQ token resolved (length=%d)", len(token))
+
         start_time = time.monotonic()
         headers = {
             "Authorization": f"apiKey {token}",
             "Content-Type": "application/json",
         }
 
-        # Submit job
-        try:
-            submit_resp = requests.post(
-                f"{_IONQ_BASE_URL}/jobs",
-                headers=headers,
-                json={
-                    "lang": "openqasm",
-                    "body": circuit_qasm,
-                    "shots": shots,
-                    "target": target,
-                },
-                timeout=30,
-            )
-            submit_resp.raise_for_status()
-            job_data = submit_resp.json()
-            job_id = job_data["id"]
-            logger.info("IonQ job submitted: %s (target=%s)", job_id, target)
-        except Exception as exc:
+        # ------------------------------------------------------------------
+        # Submit job — with retry on transient HTTP errors
+        # ------------------------------------------------------------------
+        job_id: str | None = None
+        last_submit_exc: Exception | None = None
+
+        for attempt in range(1, _MAX_SUBMIT_RETRIES + 1):
+            try:
+                submit_resp = requests.post(
+                    f"{_IONQ_BASE_URL}/jobs",
+                    headers=headers,
+                    json={
+                        "lang": "openqasm",
+                        "body": circuit_qasm,
+                        "shots": shots,
+                        "target": target,
+                    },
+                    timeout=30,
+                )
+
+                # Retry on transient HTTP codes
+                if submit_resp.status_code in _TRANSIENT_HTTP_CODES:
+                    logger.warning(
+                        "IonQ submit attempt %d/%d got HTTP %d — retrying",
+                        attempt, _MAX_SUBMIT_RETRIES, submit_resp.status_code,
+                    )
+                    if attempt < _MAX_SUBMIT_RETRIES:
+                        backoff = 2 ** attempt  # 2s, 4s, 8s
+                        time.sleep(backoff)
+                        continue
+                    submit_resp.raise_for_status()
+
+                submit_resp.raise_for_status()
+                job_data = submit_resp.json()
+                job_id = job_data["id"]
+                logger.info("IonQ job submitted: %s (target=%s)", job_id, target)
+                break
+
+            except Exception as exc:
+                last_submit_exc = exc
+                logger.warning(
+                    "IonQ submit attempt %d/%d failed: %s",
+                    attempt, _MAX_SUBMIT_RETRIES, exc,
+                )
+                if attempt < _MAX_SUBMIT_RETRIES:
+                    backoff = 2 ** attempt
+                    time.sleep(backoff)
+
+        if job_id is None:
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
-            logger.error("IonQ job submission failed: %s", exc)
+            logger.error("IonQ job submission failed after %d retries", _MAX_SUBMIT_RETRIES)
             return {
+                "run_id": run_id,
                 "status": "error",
                 "error_code": "IONQ_SUBMIT_ERROR",
-                "error": str(exc),
-                "quantum_metadata": {
-                    "provider": "ionq",
-                    "target": target,
-                    "execution_time_ms": elapsed_ms,
+                "error": str(last_submit_exc),
+                "compute_class": "quantum_hw",
+                "execution_witness": {
+                    "compute_class": "quantum_hw",
+                    "backend_id": target,
+                    "quantum_metadata": {
+                        "provider": "ionq",
+                        "backend_name": target,
+                        "shots": shots,
+                        "execution_time_ms": elapsed_ms,
+                    },
                 },
                 "exploratory": True,
             }
 
+        # ------------------------------------------------------------------
         # Poll for completion
-        for attempt in range(_MAX_POLL_ATTEMPTS):
+        # ------------------------------------------------------------------
+        job_status: dict = {}
+        for poll_attempt in range(IONQ_MAX_POLL_ATTEMPTS):
+            # Honour overall timeout
+            elapsed = time.monotonic() - start_time
+            if elapsed > IONQ_TIMEOUT:
+                break
+
             try:
                 status_resp = requests.get(
                     f"{_IONQ_BASE_URL}/jobs/{job_id}",
@@ -113,38 +174,54 @@ class IonQBackend:
                     elapsed_ms = int((time.monotonic() - start_time) * 1000)
                     error_msg = job_status.get("error", {}).get("message", "Unknown IonQ error")
                     return {
+                        "run_id": run_id,
                         "status": "error",
                         "error_code": "IONQ_EXECUTION_ERROR",
                         "error": error_msg,
-                        "quantum_metadata": {
-                            "provider": "ionq",
-                            "target": target,
-                            "job_id": job_id,
-                            "execution_time_ms": elapsed_ms,
+                        "compute_class": "quantum_hw",
+                        "execution_witness": {
+                            "compute_class": "quantum_hw",
+                            "backend_id": target,
+                            "quantum_metadata": {
+                                "provider": "ionq",
+                                "backend_name": target,
+                                "shots": shots,
+                                "job_id": job_id,
+                                "execution_time_ms": elapsed_ms,
+                            },
                         },
                         "exploratory": True,
                     }
 
-                time.sleep(_POLL_INTERVAL_S)
+                time.sleep(IONQ_POLL_INTERVAL)
             except Exception as exc:
-                logger.warning("IonQ poll attempt %d failed: %s", attempt, exc)
-                time.sleep(_POLL_INTERVAL_S)
+                logger.warning("IonQ poll attempt %d failed: %s", poll_attempt, exc)
+                time.sleep(IONQ_POLL_INTERVAL)
         else:
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
             return {
+                "run_id": run_id,
                 "status": "error",
                 "error_code": "IONQ_TIMEOUT",
                 "error": f"Job {job_id} did not complete within timeout",
-                "quantum_metadata": {
-                    "provider": "ionq",
-                    "target": target,
-                    "job_id": job_id,
-                    "execution_time_ms": elapsed_ms,
+                "compute_class": "quantum_hw",
+                "execution_witness": {
+                    "compute_class": "quantum_hw",
+                    "backend_id": target,
+                    "quantum_metadata": {
+                        "provider": "ionq",
+                        "backend_name": target,
+                        "shots": shots,
+                        "job_id": job_id,
+                        "execution_time_ms": elapsed_ms,
+                    },
                 },
                 "exploratory": True,
             }
 
+        # ------------------------------------------------------------------
         # Fetch results
+        # ------------------------------------------------------------------
         try:
             results_resp = requests.get(
                 f"{_IONQ_BASE_URL}/jobs/{job_id}/results",
@@ -156,37 +233,51 @@ class IonQBackend:
         except Exception as exc:
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
             return {
+                "run_id": run_id,
                 "status": "error",
                 "error_code": "IONQ_RESULT_FETCH_ERROR",
                 "error": str(exc),
-                "quantum_metadata": {
-                    "provider": "ionq",
-                    "target": target,
-                    "job_id": job_id,
-                    "execution_time_ms": elapsed_ms,
+                "compute_class": "quantum_hw",
+                "execution_witness": {
+                    "compute_class": "quantum_hw",
+                    "backend_id": target,
+                    "quantum_metadata": {
+                        "provider": "ionq",
+                        "backend_name": target,
+                        "shots": shots,
+                        "job_id": job_id,
+                        "execution_time_ms": elapsed_ms,
+                    },
                 },
                 "exploratory": True,
             }
 
-        # IonQ returns probabilities → convert to counts
+        # IonQ returns probabilities -> convert to counts
         counts = {}
         for bitstring, probability in raw_results.items():
             counts[str(bitstring)] = int(round(probability * shots))
 
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
         qubit_count = job_status.get("qubits", 0)
+        circuit_depth = job_status.get("circuit_depth", 0)
 
         return {
-            "status": "ok",
+            "run_id": run_id,
+            "status": "succeeded",
             "counts": counts,
-            "quantum_metadata": {
-                "backend_name": target,
-                "shots": shots,
-                "execution_time_ms": elapsed_ms,
-                "qubit_count": qubit_count,
-                "circuit_depth": job_status.get("circuit_depth", 0),
-                "provider": "ionq",
-                "job_id": job_id,
+            "compute_class": "quantum_hw",
+            "execution_witness": {
+                "compute_class": "quantum_hw",
+                "backend_id": target,
+                "quantum_metadata": {
+                    "provider": "ionq",
+                    "backend_name": target,
+                    "shots": shots,
+                    "circuit_depth": circuit_depth,
+                    "qubit_count": qubit_count,
+                    "execution_time_ms": elapsed_ms,
+                    "job_id": job_id,
+                },
             },
             "exploratory": True,
         }

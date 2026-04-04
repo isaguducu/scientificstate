@@ -38,13 +38,19 @@ def is_replication_required(claim: dict, run: dict | None = None) -> bool:
 
 def validate_replication_for_endorsement(
     claim: dict,
-    replications: list[dict],
+    replications: list[dict] | None = None,
+    replication_history: list[dict] | None = None,
 ) -> dict:
     """Validate whether a claim has sufficient replication for endorsement.
 
+    SYNC interface — no aiosqlite.
+
     Args:
         claim: Claim dict with compute_class.
-        replications: List of replication result dicts.
+        replications: List of replication result dicts (legacy in-memory path).
+        replication_history: list[dict] with {request_id, status,
+            source_institution_id, target_institution_id}.
+            Daemon queries DB and passes results here.
 
     Returns:
         Dict with "endorsable" (bool) and "reason" (str).
@@ -55,8 +61,28 @@ def validate_replication_for_endorsement(
             "reason": "Replication not required for this compute class.",
         }
 
+    # Prefer replication_history (DB-backed institutional path)
+    if replication_history:
+        valid_confirmed = [
+            r for r in replication_history
+            if r.get("status") == "confirmed"
+            and r.get("source_institution_id") != r.get("target_institution_id")
+        ]
+        if len(valid_confirmed) >= 1:
+            return {
+                "endorsable": True,
+                "reason": f"{len(valid_confirmed)} confirmed institutional replication(s).",
+            }
+        return {
+            "endorsable": False,
+            "reason": "quantum/hybrid claim requires \u22651 confirmed cross-institutional replication",
+        }
+
+    # Fallback to existing in-memory check behavior
+    reps = replications or []
+
     confirmed = [
-        r for r in replications
+        r for r in reps
         if r.get("status") == "confirmed"
     ]
 
@@ -67,7 +93,7 @@ def validate_replication_for_endorsement(
         }
 
     partially = [
-        r for r in replications
+        r for r in reps
         if r.get("status") == "partially_confirmed"
     ]
 

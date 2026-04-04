@@ -120,7 +120,13 @@ def execute_hybrid(
                 "error": err,
             }
 
-    return {
+    # --- Phase 8 W2: timing + risk assessment ---
+    # NOTE: ThreadPoolExecutor above does not capture per-branch timing.
+    # We approximate parallel_execution_time_ms from wall-clock span.
+    classical_time_ms = classical_result.get("execution_time_ms", 0)
+    quantum_time_ms = quantum_result.get("execution_time_ms", 0)
+
+    result = {
         "status": overall_status,
         "compute_class": "hybrid",
         "counts": counts,
@@ -130,7 +136,38 @@ def execute_hybrid(
         "execution_witnesses": execution_witnesses,
         "exploratory": True,  # M3 hard rule: quantum content → exploratory
         "branch_errors": errors if errors else None,
+        "compute_artifact_risk": _assess_compute_artifact_risk(quantum_result),
+        "semantic_loss_risk": _assess_semantic_loss_risk(classical_result, quantum_result),
+        "parallel_execution_time_ms": max(classical_time_ms, quantum_time_ms),
+        "branch_count": 2,
     }
+
+    return result
+
+
+def _assess_compute_artifact_risk(quantum_result: dict) -> str:
+    """Assess risk of hardware/transpiler artifacts in quantum result."""
+    if quantum_result.get("fallback"):
+        return "low"
+    qm = quantum_result.get("quantum_metadata", {})
+    if not qm:
+        qm = quantum_result.get("execution_witness", {}).get("quantum_metadata", {})
+    depth = qm.get("circuit_depth", 0)
+    qubits = qm.get("qubit_count", 0)
+    if depth > 100 or qubits > 20:
+        return "high"
+    if depth > 50 or qubits > 10:
+        return "medium"
+    return "low"
+
+
+def _assess_semantic_loss_risk(classical_result: dict, quantum_result: dict) -> str:
+    """Assess risk of meaning loss during classical->quantum translation."""
+    if quantum_result.get("status") in ("failed", "error"):
+        return "high"
+    if quantum_result.get("fallback"):
+        return "low"
+    return "medium"
 
 
 def _summarize_result(result: dict) -> dict:

@@ -147,6 +147,89 @@ CREATE VIEW IF NOT EXISTS ssv_records  AS SELECT * FROM ssvs;
 CREATE VIEW IF NOT EXISTS claim_records AS SELECT * FROM claims;
 """
 
+_CREATE_QPU_PRICE_SNAPSHOTS = """
+CREATE TABLE IF NOT EXISTS qpu_price_snapshots (
+    snapshot_id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL CHECK (provider IN ('ibm_quantum', 'ionq')),
+    backend_name TEXT NOT NULL,
+    price_per_shot REAL,
+    price_per_task REAL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    source TEXT NOT NULL CHECK (source IN ('manual', 'api_fetch', 'provider_docs')),
+    effective_at TEXT NOT NULL,
+    expires_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+"""
+
+_CREATE_QPU_USAGE_LOG = """
+CREATE TABLE IF NOT EXISTS qpu_usage_log (
+    log_id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL,
+    institution_id TEXT,
+    provider TEXT NOT NULL CHECK (provider IN ('ibm_quantum', 'ionq')),
+    backend_name TEXT NOT NULL,
+    shots INTEGER NOT NULL,
+    estimated_cost TEXT NOT NULL,
+    actual_cost TEXT,
+    status TEXT NOT NULL DEFAULT 'estimated'
+        CHECK (status IN ('estimated', 'running', 'completed', 'failed', 'refunded')),
+    price_snapshot_id TEXT REFERENCES qpu_price_snapshots(snapshot_id),
+    created_at TEXT DEFAULT (datetime('now'))
+);
+"""
+
+_CREATE_QPU_QUOTAS = """
+CREATE TABLE IF NOT EXISTS qpu_quotas (
+    quota_id TEXT PRIMARY KEY,
+    institution_id TEXT,
+    user_id TEXT,
+    period TEXT NOT NULL CHECK (period IN ('daily', 'monthly')),
+    shot_limit INTEGER NOT NULL,
+    shot_used INTEGER NOT NULL DEFAULT 0,
+    budget_limit TEXT,
+    budget_used TEXT DEFAULT '{"amount": 0}',
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+"""
+
+_CREATE_REPLICATION_REQUESTS = """
+CREATE TABLE IF NOT EXISTS replication_requests (
+    request_id TEXT PRIMARY KEY,
+    claim_id TEXT NOT NULL,
+    source_ssv_id TEXT NOT NULL,
+    source_institution_id TEXT NOT NULL,
+    target_institution_id TEXT NOT NULL,
+    method_id TEXT NOT NULL,
+    compute_class TEXT NOT NULL CHECK (compute_class IN ('quantum_hw', 'hybrid')),
+    tolerance_abs REAL DEFAULT 1e-6,
+    tolerance_rel REAL DEFAULT 1e-4,
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'in_progress', 'confirmed',
+               'partially_confirmed', 'not_confirmed', 'expired')),
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    CHECK (source_institution_id != target_institution_id)
+);
+"""
+
+_CREATE_REPLICATION_RESULTS = """
+CREATE TABLE IF NOT EXISTS replication_results (
+    result_id TEXT PRIMARY KEY,
+    request_id TEXT NOT NULL REFERENCES replication_requests(request_id),
+    target_ssv_id TEXT NOT NULL,
+    comparison_report TEXT NOT NULL DEFAULT '{}',
+    confidence_score REAL NOT NULL DEFAULT 0.0,
+    status TEXT NOT NULL CHECK (status IN ('confirmed', 'partially_confirmed', 'not_confirmed')),
+    institution_id TEXT NOT NULL,
+    executed_at TEXT DEFAULT (datetime('now'))
+);
+"""
+
 _ALL_DDL = [
     _CREATE_INGEST_EVENTS,
     _CREATE_DOMAINS,
@@ -155,6 +238,11 @@ _ALL_DDL = [
     _CREATE_RUNS,
     _CREATE_SSVS,
     _CREATE_CLAIMS,
+    _CREATE_QPU_PRICE_SNAPSHOTS,
+    _CREATE_QPU_USAGE_LOG,
+    _CREATE_QPU_QUOTAS,
+    _CREATE_REPLICATION_REQUESTS,
+    _CREATE_REPLICATION_RESULTS,
 ]
 
 

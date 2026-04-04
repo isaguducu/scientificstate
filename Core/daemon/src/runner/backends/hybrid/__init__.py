@@ -60,4 +60,11 @@ class HybridBackend(ComputeBackend):
             params=params,
         )
 
+        # Ensure compute_class is always set (§9A.3)
+        result["compute_class"] = "hybrid"
+
+        # Classical branch is authoritative for R field (§9A.1)
+        if "classical_result" in result and "result" not in result:
+            result["result"] = result["classical_result"]
+
         return result

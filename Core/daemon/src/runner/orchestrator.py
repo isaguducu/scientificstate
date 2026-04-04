@@ -73,3 +73,33 @@ def _register_quantum_sim_backend() -> None:
 
 
 _register_quantum_sim_backend()
+
+
+# ---------------------------------------------------------------------------
+# Phase 8: Quantum Hardware Backend Registration (additive)
+# ---------------------------------------------------------------------------
+
+def _register_quantum_hw_backend() -> None:
+    """Register quantum hardware backend if credential module is available."""
+    try:
+        from src.runner.backends.quantum_hw import QuantumHWBackend
+        _BACKENDS["quantum_hw"] = QuantumHWBackend()
+    except ImportError:
+        pass
+
+_register_quantum_hw_backend()
+
+
+# ---------------------------------------------------------------------------
+# Phase 8: Hybrid Backend Registration (additive, Wave 2)
+# ---------------------------------------------------------------------------
+
+def _register_hybrid_backend() -> None:
+    """Register hybrid backend if both classical and quantum_hw available."""
+    try:
+        from runner.backends.hybrid import HybridBackend  # noqa: F401
+        _BACKENDS["hybrid"] = None  # placeholder — initialized with domain_registry in runs.py
+    except ImportError:
+        pass
+
+_register_hybrid_backend()

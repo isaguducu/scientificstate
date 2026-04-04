@@ -39,6 +39,7 @@ function App({ children }: Props) {
           <nav className="app-nav">
             <Link to="/" className="app-nav-link">Dashboard</Link>
             <Link to="/modules" className="app-nav-link">Modules</Link>
+            <Link to="/settings/qpu" className="app-nav-link">Settings</Link>
           </nav>
           <div style={{ marginLeft: "auto" }}>
             <DaemonStatus />

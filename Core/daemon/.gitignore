@@ -11,6 +11,9 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 
+# Runtime data store (raw artifacts, registry cache)
+data/store/
+
 # uv lock (keep uv.lock, ignore cache)
 .uv/
 
