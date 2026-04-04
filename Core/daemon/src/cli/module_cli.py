@@ -8,6 +8,7 @@ Usage:
     python -m src.cli.module_cli package <path> [--key <private_key_path>]
     python -m src.cli.module_cli publish <path> [--key <private_key_path>] [--portal <url>]
     python -m src.cli.module_cli revoke <domain_id> <version> <reason>
+    python -m src.cli.module_cli doctor
 
 All commands communicate with the local daemon at http://127.0.0.1:9473.
 """
@@ -175,6 +176,80 @@ def cmd_revoke(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_doctor(_args: argparse.Namespace) -> None:
+    """Check installed modules for compatibility and update needs."""
+    modules = _daemon_get("/modules")
+    if not modules:
+        print("No modules installed — nothing to check.")
+        return
+
+    # Get current framework version from daemon
+    try:
+        info = _daemon_get("/health")
+        core_version = info.get("version", "unknown")
+    except SystemExit:
+        core_version = "unknown"
+
+    print(f"Core version: {core_version}")
+    print()
+
+    issues_found = 0
+    for m in modules:
+        domain_id = m.get("domain_id", "unknown")
+        version = m.get("version", "?")
+        min_ver = m.get("min_core_version")
+        max_ver = m.get("max_core_version")
+        status_parts: list[str] = []
+
+        # Check version constraints
+        if min_ver and core_version != "unknown":
+            if _version_lt(core_version, min_ver):
+                status_parts.append(f"REQUIRES core >={min_ver} — UPDATE CORE")
+                issues_found += 1
+
+        if max_ver and core_version != "unknown":
+            if _version_gt(core_version, max_ver):
+                status_parts.append(f"MAX core {max_ver} — MODULE UPDATE NEEDED")
+                issues_found += 1
+
+        # Check signature
+        if not m.get("signature"):
+            status_parts.append("UNSIGNED")
+
+        if not status_parts:
+            status_parts.append("OK")
+
+        status_str = ", ".join(status_parts)
+        icon = "+" if "OK" in status_str else "!"
+        print(f"  [{icon}] {domain_id}@{version}: {status_str}")
+
+    print()
+    if issues_found == 0:
+        print("All modules compatible. No action needed.")
+    else:
+        print(f"{issues_found} issue(s) found. Run 'module install <name>' to update.")
+
+
+def _version_lt(a: str, b: str) -> bool:
+    """Simple semver less-than comparison."""
+    try:
+        a_parts = [int(x) for x in a.split(".")]
+        b_parts = [int(x) for x in b.split(".")]
+        return a_parts < b_parts
+    except (ValueError, AttributeError):
+        return False
+
+
+def _version_gt(a: str, b: str) -> bool:
+    """Simple semver greater-than comparison."""
+    try:
+        a_parts = [int(x) for x in a.split(".")]
+        b_parts = [int(x) for x in b.split(".")]
+        return a_parts > b_parts
+    except (ValueError, AttributeError):
+        return False
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="scientificstate module",
@@ -212,6 +287,9 @@ def main() -> None:
     p_revoke.add_argument("version", help="Version to revoke")
     p_revoke.add_argument("reason", help="Revocation reason")
 
+    # doctor
+    sub.add_parser("doctor", help="Check module compatibility and update needs")
+
     args = parser.parse_args()
 
     handlers = {
@@ -221,6 +299,7 @@ def main() -> None:
         "package": cmd_package,
         "publish": cmd_publish,
         "revoke": cmd_revoke,
+        "doctor": cmd_doctor,
     }
     handlers[args.command](args)
 

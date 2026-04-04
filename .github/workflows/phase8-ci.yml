@@ -169,17 +169,8 @@ jobs:
       - run: cd Domains/${{ matrix.domain }} && uv sync --extra dev
       - run: cd Domains/${{ matrix.domain }} && uv run pytest -q
 
-  # ── Web build ───────────────────────────────────────────────────────────
-  web:
-    name: Web build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: cd Web && npm ci
-      - run: cd Web && npm run build
+  # ── Web build — MOVED to private repo CI (scientificstate/platform-private)
+  # Web/ is not part of the public repository.
 
   # ── Desktop typecheck + build ───────────────────────────────────────────
   desktop:

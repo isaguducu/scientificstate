@@ -69,6 +69,7 @@
         "text",
         "epistemic_status",
         "what_would_change_this",
+        "trust_tier",
         "gate_status",
         "evidence",
         "uncertainty_summary",
@@ -80,6 +81,12 @@
         "text": {
           "type": "string",
           "description": "Claim statement. Copy standard: no 'proven', 'definitive', 'the best', 'confirmed'."
+        },
+        "trust_tier": {
+          "type": "string",
+          "enum": ["local_unverified", "community_signed", "scientificstate_verified"],
+          "default": "local_unverified",
+          "description": "Trust tier — determines badge display in portal and desktop"
         },
         "epistemic_status": {
           "type": "string",

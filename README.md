@@ -111,7 +111,7 @@ polymer_science = "polymer_science.domain_manifest:PolymerScienceDomain"
 
 The `Core/framework/` layer has zero domain knowledge. Domains depend on the framework — never the reverse. The first domain module (`Domains/polymer/`) covers polymer mass spectrometry analysis: PCA, HCA, KMD analysis, deisotoping, and fragment matching.
 
-### 9 Constitutional Principles
+### Constitutional Principles
 
 Every ScientificState component is evaluated against 9 constitutional principles, including:
 
@@ -178,16 +178,22 @@ To our knowledge, no other open-source system combines all of: desktop-first wor
 ## Repository Structure
 
 ```
-9 Constitutional Principles/   — design documents, SSV lifecycle guides, constitutional specs
 Core/
   framework/                   — domain-agnostic science kernel (SSV, claims, uncertainty, validity, CMRE)
   daemon/                      — local execution daemon (FastAPI)
   contracts/                   — JSON Schema contracts + OpenAPI + generated TypeScript types
   ui/                          — shared React components
 Desktop/                       — Tauri desktop workbench (Rust + React)
-Web/                           — Next.js portal (M2)
 Domains/
   polymer/                     — first domain module: KMD analysis, PCA, HCA, deisotoping, fragment matching
+  materials/                   — materials science domain
+  biology/                     — biology domain
+  chemistry/                   — chemistry domain
+Infrastructure/                — Supabase migrations, Cloudflare config
+Mobile/                        — Expo mobile app
+packages/
+  create-ss-domain/            — scaffold generator for new domain modules
+docs/                          — compliance and deployment documentation
 ```
 
 ---
