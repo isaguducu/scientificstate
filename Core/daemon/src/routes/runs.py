@@ -190,15 +190,27 @@ async def create_run(body: ComputeRunRequest, request: Request) -> Any:
     # Determine compute class and dispatch to appropriate backend
     compute_class = body.compute_class
     if compute_class in ("quantum_sim", "quantum_hw", "hybrid"):
-        if compute_class == "quantum_sim":
-            from src.runner.backends.quantum_sim import QuantumSimBackend
-            backend = QuantumSimBackend()
-        elif compute_class == "quantum_hw":
-            from src.runner.backends.quantum_hw import QuantumHWBackend
-            backend = QuantumHWBackend()
-        else:  # hybrid
-            from src.runner.backends.hybrid import HybridBackend
-            backend = HybridBackend(domain_registry=registry)
+        # Use orchestrator registry when available, fall back to direct import
+        from src.runner.orchestrator import get_backend as _get_backend
+
+        backend = _get_backend(compute_class)
+        if backend is None:
+            # Fall back to direct instantiation
+            if compute_class == "quantum_sim":
+                try:
+                    from src.runner.backends.quantum_sim import QuantumSimBackend
+                    backend = QuantumSimBackend()
+                except ImportError:
+                    raise HTTPException(
+                        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                        detail="Quantum simulator backend not available",
+                    )
+            elif compute_class == "quantum_hw":
+                from src.runner.backends.quantum_hw import QuantumHWBackend
+                backend = QuantumHWBackend()
+            else:  # hybrid
+                from src.runner.backends.hybrid import HybridBackend
+                backend = HybridBackend(domain_registry=registry)
 
         # Execute via backend directly, then feed result to pipeline
         # Inject domain_id so ClassicalBackend can find the domain in registry

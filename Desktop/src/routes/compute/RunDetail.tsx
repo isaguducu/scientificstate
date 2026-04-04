@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { ComputeRunForm } from "../../features/compute/ComputeRunForm";
+import { ExploratoryBadge } from "../../components/ExploratoryBadge";
 
 const DAEMON = "http://127.0.0.1:9473";
 
@@ -15,7 +16,18 @@ interface ComputeRunResult {
   ssv_ref?: string;
   result?: Record<string, unknown>;
   error?: { error_code: string; message: string };
-  execution_witness?: { compute_class: string; backend_id: string };
+  execution_witness?: {
+    compute_class: string;
+    backend_id: string;
+    quantum_metadata?: {
+      shots?: number;
+      noise_model?: string | null;
+      simulator?: string;
+      circuit_depth?: number;
+      qubit_count?: number;
+    };
+  };
+  exploratory?: boolean;
 }
 
 const statusColor: Record<string, string> = {
@@ -90,6 +102,73 @@ export function RunDetail() {
         <div style={{ background: "#1c1c1e", borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>
           <span style={{ fontSize: 12, color: "#aaa" }}>SSV ref: </span>
           <code style={{ fontSize: 12, color: "#34c759" }}>{run.ssv_ref}</code>
+        </div>
+      )}
+
+      {/* Quantum metadata section */}
+      {run.execution_witness && run.execution_witness.compute_class !== "classical" && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+            <ExploratoryBadge
+              computeClass={run.execution_witness.compute_class}
+              backendId={run.execution_witness.backend_id}
+            />
+          </div>
+          {run.execution_witness.quantum_metadata && (
+            <div
+              style={{
+                background: "#1c1c1e",
+                border: "1px solid #332800",
+                borderRadius: 8,
+                padding: "10px 14px",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                gap: "8px 16px",
+                fontSize: 12,
+              }}
+            >
+              {run.execution_witness.quantum_metadata.shots != null && (
+                <div>
+                  <div style={{ color: "#888" }}>Shots</div>
+                  <div style={{ color: "#e0e0e0", fontWeight: 600 }}>
+                    {run.execution_witness.quantum_metadata.shots.toLocaleString()}
+                  </div>
+                </div>
+              )}
+              {run.execution_witness.quantum_metadata.circuit_depth != null && (
+                <div>
+                  <div style={{ color: "#888" }}>Circuit Depth</div>
+                  <div style={{ color: "#e0e0e0", fontWeight: 600 }}>
+                    {run.execution_witness.quantum_metadata.circuit_depth}
+                  </div>
+                </div>
+              )}
+              {run.execution_witness.quantum_metadata.qubit_count != null && (
+                <div>
+                  <div style={{ color: "#888" }}>Qubits</div>
+                  <div style={{ color: "#e0e0e0", fontWeight: 600 }}>
+                    {run.execution_witness.quantum_metadata.qubit_count}
+                  </div>
+                </div>
+              )}
+              {run.execution_witness.quantum_metadata.simulator && (
+                <div>
+                  <div style={{ color: "#888" }}>Simulator</div>
+                  <div style={{ color: "#e0e0e0", fontWeight: 600 }}>
+                    {run.execution_witness.quantum_metadata.simulator}
+                  </div>
+                </div>
+              )}
+              {run.execution_witness.quantum_metadata.noise_model && (
+                <div>
+                  <div style={{ color: "#888" }}>Noise Model</div>
+                  <div style={{ color: "#e0e0e0", fontWeight: 600 }}>
+                    {run.execution_witness.quantum_metadata.noise_model}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

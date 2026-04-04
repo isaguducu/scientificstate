@@ -1,14 +1,16 @@
-"""Monitoring endpoints — health, metrics, version, alerts.
+"""Monitoring endpoints — health, metrics, version, alerts, performance.
 
-GET /monitoring/health   — detailed health check (uptime, DB, disk)
-GET /monitoring/metrics  — Prometheus-compatible metric counters
-GET /monitoring/version  — daemon version + build info
-GET /monitoring/alerts   — active alerts (disk, DB size, recent restart)
+GET /monitoring/health      — detailed health check (uptime, DB, disk)
+GET /monitoring/metrics     — Prometheus-compatible metric counters
+GET /monitoring/version     — daemon version + build info
+GET /monitoring/alerts      — active alerts (disk, DB size, recent restart)
+GET /monitoring/performance — response time percentiles, throughput, error rate
 
 Includes request-counting middleware that tracks total requests and errors.
 """
 from __future__ import annotations
 
+import collections
 import os
 import shutil
 import sys
@@ -30,6 +32,11 @@ _request_count = 0
 _error_count = 0
 _counter_lock = threading.Lock()
 
+# Response time tracking (ring buffer of recent response times)
+_MAX_SAMPLES = 10_000
+_response_times: collections.deque[float] = collections.deque(maxlen=_MAX_SAMPLES)
+_error_timestamps: collections.deque[float] = collections.deque(maxlen=_MAX_SAMPLES)
+
 
 # ---------------------------------------------------------------------------
 # Middleware — request/error counter
@@ -37,15 +44,19 @@ _counter_lock = threading.Lock()
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):
-    """Counts total requests and error responses (4xx/5xx)."""
+    """Counts total requests, error responses (4xx/5xx), and response times."""
 
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]
         global _request_count, _error_count  # noqa: PLW0603
+        start = time.time()
         response: Response = await call_next(request)
+        elapsed_ms = (time.time() - start) * 1000
         with _counter_lock:
             _request_count += 1
+            _response_times.append(elapsed_ms)
             if response.status_code >= 400:
                 _error_count += 1
+                _error_timestamps.append(time.time())
         return response
 
 
@@ -164,4 +175,56 @@ async def alerts() -> dict:
         "alerts": alert_list,
         "count": len(alert_list),
         "checked_at": datetime.now(tz=timezone.utc).isoformat(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /monitoring/performance
+# ---------------------------------------------------------------------------
+
+
+def _percentile(samples: list[float], pct: int) -> float:
+    """Return the given percentile from a sorted list of samples."""
+    if not samples:
+        return 0.0
+    k = (len(samples) - 1) * pct / 100
+    f = int(k)
+    c = f + 1 if f + 1 < len(samples) else f
+    return round(samples[f] + (k - f) * (samples[c] - samples[f]), 2)
+
+
+@router.get("/performance")
+async def performance_metrics() -> dict:
+    """Performance metrics: response time percentiles, throughput, error rate."""
+    now = time.time()
+    uptime = now - _START_TIME
+
+    with _counter_lock:
+        sorted_times = sorted(_response_times)
+        req_count = _request_count
+        # Error timestamps for windowed rates
+        errors_1h = sum(1 for t in _error_timestamps if now - t < 3600)
+        errors_24h = sum(1 for t in _error_timestamps if now - t < 86400)
+        total_1h = max(req_count, 1)  # avoid division by zero
+        total_24h = max(req_count, 1)
+
+    rps = round(req_count / uptime, 2) if uptime > 0 else 0.0
+    err_rate_1h = round(errors_1h / total_1h, 4)
+    err_rate_24h = round(errors_24h / total_24h, 4)
+
+    return {
+        "response_time": {
+            "p50_ms": _percentile(sorted_times, 50),
+            "p95_ms": _percentile(sorted_times, 95),
+            "p99_ms": _percentile(sorted_times, 99),
+        },
+        "throughput": {
+            "requests_per_second": rps,
+            "total_requests": req_count,
+        },
+        "error_rate": {
+            "last_hour": err_rate_1h,
+            "last_24h": err_rate_24h,
+        },
+        "uptime_seconds": round(uptime, 2),
     }

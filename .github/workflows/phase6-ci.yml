@@ -1,0 +1,230 @@
+name: Phase 6 CI
+
+on:
+  push:
+    branches: [main, "phase6/**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Contracts ────────────────────────────────────────────────────────────
+  contracts:
+    name: Contracts validate + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @scientificstate/contracts run validate
+      - run: pnpm --filter @scientificstate/contracts run build
+
+  # ── Framework ────────────────────────────────────────────────────────────
+  framework:
+    name: Framework
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Core/framework && uv sync --extra dev
+      - run: cd Core/framework && uv run pytest -q
+      - run: cd Core/framework && uv run ruff check .
+
+  # ── Polymer domain ──────────────────────────────────────────────────────
+  polymer-domain:
+    name: Polymer domain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Domains/polymer && uv sync --extra dev
+      - run: cd Domains/polymer && uv run pytest -q
+
+  # ── Materials domain ────────────────────────────────────────────────────
+  materials-domain:
+    name: Materials domain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Domains/materials && uv sync --extra dev
+      - run: cd Domains/materials && uv run pytest -q
+
+  # ── Biology domain ─────────────────────────────────────────────────────
+  biology-domain:
+    name: Biology domain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Domains/biology && uv sync --extra dev
+      - run: cd Domains/biology && uv run pytest -q
+
+  # ── Chemistry domain ───────────────────────────────────────────────────
+  chemistry-domain:
+    name: Chemistry domain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Domains/chemistry && uv sync --extra dev
+      - run: cd Domains/chemistry && uv run pytest -q
+
+  # ── Cross-domain ───────────────────────────────────────────────────────
+  cross-domain:
+    name: Cross-domain tests
+    needs: [polymer-domain, materials-domain, biology-domain, chemistry-domain]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Core/framework && uv sync --extra dev
+      - run: cd Core/framework && uv run pytest tests/test_cross_domain.py -q
+
+  # ── Daemon ───────────────────────────────────────────────────────────────
+  daemon:
+    name: Daemon
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv run pytest tests/ -q
+      - run: cd Core/daemon && uv run ruff check .
+
+  # ── Shared UI ───────────────────────────────────────────────────────────
+  shared-ui:
+    name: Shared UI build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd Core/ui && npm ci && npm run build
+
+  # ── Web build ───────────────────────────────────────────────────────────
+  web:
+    name: Web build
+    needs: [shared-ui]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd Web && npm ci
+      - run: cd Web && npm run build
+
+  # ── Desktop typecheck + build ───────────────────────────────────────────
+  desktop:
+    name: Desktop typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Desktop/package-lock.json
+      - run: cd Desktop && npm ci
+      - run: cd Desktop && npm run typecheck
+      - run: cd Desktop && npm run build
+
+  # ── Mobile ──────────────────────────────────────────────────────────────
+  mobile:
+    name: Mobile export
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd Mobile && npm ci
+      - run: cd Mobile && npx expo export --platform web
+
+  # ── i18n key check ─────────────────────────────────────────────────────
+  i18n-check:
+    name: i18n key sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/check-i18n-keys.js
+
+  # ── Recommendation engine ──────────────────────────────────────────────
+  recommendation-engine:
+    name: Recommendation + Trending
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Core/framework && uv sync --extra dev
+      - run: cd Core/framework && uv run pytest tests/test_recommendation.py tests/test_trending.py -q
+
+  # ── SAML integration ───────────────────────────────────────────────────
+  saml-integration:
+    name: SAML integration test
+    needs: [web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd Web && npm ci
+      - run: cd Web && npx tsc --noEmit --project tsconfig.json
+      - run: npx tsx Web/tests/saml-integration.test.ts
+        # Mock IdP SAML flow: XML parsing, status validation, conditions, email format
