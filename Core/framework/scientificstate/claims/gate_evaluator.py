@@ -280,3 +280,84 @@ def evaluate_all(claim: dict) -> GateResult:
         gate_rep=rep,
         failures=failures,
     )
+
+
+# ── Classical baseline validation helpers (Phase 7 — M2 additive) ──────────
+
+
+def validate_classical_baseline_exists(
+    classical_baseline_ref: str | None,
+    ssv_store: dict | None = None,
+) -> tuple[bool, str]:
+    """Validate that a classical baseline SSV exists and is classical compute.
+
+    Args:
+        classical_baseline_ref: SSV id of the classical baseline run.
+        ssv_store: optional dict mapping ssv_id -> ssv dict for lookup.
+
+    Returns:
+        (is_valid, reason) tuple. is_valid is True when the ref is present and
+        (if ssv_store is provided) points to a classical compute SSV.
+    """
+    if not classical_baseline_ref:
+        return False, "No classical_baseline_ref provided"
+
+    if ssv_store is None:
+        # Without a store we can only confirm the ref is non-empty
+        return True, "classical_baseline_ref present (store not available for verification)"
+
+    ssv = ssv_store.get(classical_baseline_ref)
+    if ssv is None:
+        return False, f"Classical baseline SSV not found: {classical_baseline_ref}"
+
+    # Check compute_class is classical
+    p = ssv.get("p") or ssv.get("provenance") or {}
+    ew = p.get("execution_witness") or {}
+    cc = ew.get("compute_class", ssv.get("compute_class", "classical"))
+    if cc != "classical":
+        return False, f"Baseline SSV compute_class is '{cc}', expected 'classical'"
+
+    return True, "Classical baseline SSV verified"
+
+
+def enrich_quantum_claim_provenance(
+    claim: dict,
+    quantum_result: dict,
+    classical_baseline_ref: str | None,
+) -> dict:
+    """Enrich a claim dict with quantum execution witness provenance.
+
+    Creates a new dict (does not mutate the input). Adds execution_witness
+    and quantum_metadata from the quantum backend result into the claim's
+    provenance structure.
+
+    Args:
+        claim: original claim dict.
+        quantum_result: result dict from QuantumSimBackend.execute().
+        classical_baseline_ref: SSV id of the classical baseline, if any.
+
+    Returns:
+        New claim dict with enriched provenance.
+    """
+    enriched = {**claim}
+
+    # Extract execution_witness from quantum_result
+    ew = quantum_result.get("execution_witness") or {}
+    qm = ew.get("quantum_metadata") or quantum_result.get("quantum_metadata") or {}
+
+    enriched["compute_class"] = quantum_result.get("compute_class", "quantum_sim")
+    enriched["exploratory"] = quantum_result.get("exploratory", True)
+
+    # Set quantum_metadata at claim level for gate_quantum_metadata check
+    enriched["quantum_metadata"] = qm
+
+    # Set classical baseline ref for gate_quantum_baseline check
+    if classical_baseline_ref:
+        enriched["classical_baseline_ref"] = classical_baseline_ref
+
+    # Set provenance with execution_witness
+    provenance = dict(enriched.get("p") or enriched.get("provenance") or {})
+    provenance["execution_witness"] = ew
+    enriched["p"] = provenance
+
+    return enriched

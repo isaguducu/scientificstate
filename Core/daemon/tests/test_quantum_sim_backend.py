@@ -19,7 +19,7 @@ def test_mock_fallback_returns_counts():
         assumptions=[],
         params={"shots": 1024},
     )
-    assert result["status"] == "ok"
+    assert result["status"] == "succeeded"
     assert "counts" in result
     assert isinstance(result["counts"], dict)
     # Mock splits shots between "00" and "11"
@@ -51,7 +51,7 @@ def test_quantum_metadata_fields_present():
         assumptions=[],
         params={"shots": 512, "noise_model": "depolarizing"},
     )
-    qm = result["quantum_metadata"]
+    qm = result["execution_witness"]["quantum_metadata"]
     assert qm["shots"] == 512
     assert "simulator" in qm
     assert "circuit_depth" in qm
@@ -70,7 +70,7 @@ def test_mock_fallback_simulator_field():
         assumptions=[],
         params={},
     )
-    assert result["quantum_metadata"]["simulator"] == "mock_fallback"
+    assert result["execution_witness"]["quantum_metadata"]["simulator"] == "mock_fallback"
 
 
 def test_custom_shots_respected():

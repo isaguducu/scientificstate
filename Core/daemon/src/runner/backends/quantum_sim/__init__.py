@@ -13,6 +13,7 @@ pipeline to operate without requiring the optional qiskit dependency.
 from __future__ import annotations
 
 import logging
+import uuid
 
 from src.runner.orchestrator import ComputeBackend
 
@@ -35,6 +36,7 @@ class QuantumSimBackend(ComputeBackend):
         circuit_qasm = params.get("circuit_qasm", "")
         shots = params.get("shots", 1024)
         noise_model = params.get("noise_model")
+        run_id = str(uuid.uuid4())
 
         try:
             from qiskit import QuantumCircuit
@@ -50,14 +52,21 @@ class QuantumSimBackend(ComputeBackend):
             str_counts = {str(k): v for k, v in counts.items()}
 
             return {
-                "status": "ok",
+                "run_id": run_id,
+                "status": "succeeded",
+                "compute_class": "quantum_sim",
                 "counts": str_counts,
-                "quantum_metadata": {
-                    "shots": shots,
-                    "noise_model": noise_model,
-                    "simulator": "qiskit_aer",
-                    "circuit_depth": qc.depth(),
-                    "qubit_count": qc.num_qubits,
+                "statevector": None,
+                "execution_witness": {
+                    "compute_class": "quantum_sim",
+                    "backend_id": "aer_simulator",
+                    "quantum_metadata": {
+                        "shots": shots,
+                        "noise_model": noise_model,
+                        "simulator": "qiskit_aer",
+                        "circuit_depth": qc.depth(),
+                        "qubit_count": qc.num_qubits,
+                    },
                 },
                 "exploratory": True,
             }
@@ -65,14 +74,21 @@ class QuantumSimBackend(ComputeBackend):
         except ImportError:
             logger.info("Qiskit not installed — using mock fallback")
             return {
-                "status": "ok",
+                "run_id": run_id,
+                "status": "succeeded",
+                "compute_class": "quantum_sim",
                 "counts": {"00": shots // 2, "11": shots // 2},
-                "quantum_metadata": {
-                    "shots": shots,
-                    "noise_model": noise_model,
-                    "simulator": "mock_fallback",
-                    "circuit_depth": 0,
-                    "qubit_count": 2,
+                "statevector": None,
+                "execution_witness": {
+                    "compute_class": "quantum_sim",
+                    "backend_id": "mock_fallback",
+                    "quantum_metadata": {
+                        "shots": shots,
+                        "noise_model": noise_model,
+                        "simulator": "mock_fallback",
+                        "circuit_depth": 0,
+                        "qubit_count": 2,
+                    },
                 },
                 "exploratory": True,
             }
@@ -80,7 +96,9 @@ class QuantumSimBackend(ComputeBackend):
         except Exception as exc:
             logger.error("Quantum execution error: %s", exc)
             return {
-                "status": "error",
+                "run_id": run_id,
+                "status": "failed",
+                "compute_class": "quantum_sim",
                 "error_code": "QUANTUM_EXECUTION_ERROR",
                 "error": str(exc),
                 "exploratory": True,

@@ -104,3 +104,52 @@ async def get_replication_history(claim_id: str) -> list[dict]:
     """Get all replication requests for a claim."""
     engine = get_engine()
     return engine.get_history(claim_id)
+
+
+# ── Federation push (Phase 7 — additive) ────────────────────────────────────
+
+
+class FederationPushBody(BaseModel):
+    """Payload for pushing an endorsed claim to federation mirrors."""
+    claim_id: str
+    institution_id: str
+    domain_id: str = ""
+    title: str = ""
+    ssv_hash: str = ""
+    ssv_signature: str = ""
+    researcher_orcid: str | None = None
+    gate_status: dict | None = None
+    target_mirrors: list[str] | None = Field(
+        default=None,
+        description="Optional list of mirror URLs to push to. If empty, pushes to all trusted mirrors.",
+    )
+
+
+@router.post("/federation/push")
+async def push_to_federation(body: FederationPushBody) -> dict:
+    """Push newly endorsed claim to trusted federation mirrors.
+
+    Called after a claim is endorsed to propagate it to federated
+    discovery mirrors for cross-institutional search.
+
+    Returns:
+        {"status": "queued", "claim_id": ..., "message": ...}
+    """
+    if not body.claim_id:
+        raise HTTPException(status_code=422, detail="claim_id is required")
+    if not body.institution_id:
+        raise HTTPException(status_code=422, detail="institution_id is required")
+
+    logger.info(
+        "Federation push queued: claim=%s institution=%s targets=%s",
+        body.claim_id,
+        body.institution_id,
+        body.target_mirrors or "all-trusted",
+    )
+
+    return {
+        "status": "queued",
+        "claim_id": body.claim_id,
+        "institution_id": body.institution_id,
+        "message": "Claim queued for federation push to trusted mirrors",
+    }

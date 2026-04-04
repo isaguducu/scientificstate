@@ -40,6 +40,8 @@ tags:
     description: Institutional replication of scientific claims (Phase4 W1 — Main_Source §9A.5 M3-G)
   - name: discovery
     description: Discovery sync — push endorsed claims to portal (Phase5 W2)
+  - name: federation
+    description: Federation push — distribute endorsed claims to trusted mirrors (Phase7)
 
 paths:
   /discovery/sync:
@@ -910,6 +912,42 @@ paths:
                 items:
                   $ref: "#/components/schemas/ReplicationRequestStatus"
 
+  /replication/federation/push:
+    post:
+      operationId: federationPush
+      summary: Push endorsed claim to trusted federation mirrors
+      tags: [federation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [claim_id, institution_id]
+              properties:
+                claim_id: { type: string }
+                institution_id: { type: string }
+                domain_id: { type: string }
+                title: { type: string }
+                researcher_orcid: { type: string }
+                gate_status: { type: object }
+                ssv_hash: { type: string }
+                ssv_signature: { type: string }
+                endorsed_at: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Push queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [queued] }
+                  claim_id: { type: string }
+                  message: { type: string }
+        "400":
+          description: Missing required fields
+
 components:
   schemas:
     HealthResponse:
@@ -1136,6 +1174,28 @@ components:
               enum: [classical, quantum_sim, quantum_hw, hybrid]
             backend_id:
               type: string
+            quantum_metadata:
+              type: object
+              description: Present only for quantum/hybrid runs
+              properties:
+                shots:
+                  type: integer
+                noise_model:
+                  type: string
+                  nullable: true
+                simulator:
+                  type: string
+                circuit_depth:
+                  type: integer
+                qubit_count:
+                  type: integer
+        exploratory:
+          type: boolean
+          description: "True for quantum_sim runs — cannot enter endorsable claim path (Main_Source §9A.3)"
+        statevector:
+          type: object
+          nullable: true
+          description: Statevector output (when requested) — null for shot-based runs
         error:
           type: object
           properties:

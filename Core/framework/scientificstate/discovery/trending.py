@@ -13,7 +13,6 @@ A velocity > 1.0 means the field is accelerating.
 """
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 

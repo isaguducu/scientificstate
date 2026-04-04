@@ -178,3 +178,81 @@ phase5-smoke:
     @echo "=== shared ui ==="
     cd Core/ui && npm run build
     @echo "✅ Phase 5 smoke PASS"
+
+# ── Phase 6 smoke — Phase 5 + all domains + cross-domain + mobile + i18n + recommendation ──
+
+phase6-smoke:
+    @echo "=== contracts ==="
+    cd Core/contracts && pnpm run validate && pnpm run build
+    @echo "=== framework tests ==="
+    cd Core/framework && uv run pytest -q
+    @echo "=== framework lint ==="
+    cd Core/framework && uv run ruff check .
+    @echo "=== polymer tests ==="
+    cd Domains/polymer && uv run pytest -q
+    @echo "=== materials tests ==="
+    cd Domains/materials && uv run pytest -q
+    @echo "=== biology tests ==="
+    cd Domains/biology && uv run pytest -q
+    @echo "=== chemistry tests ==="
+    cd Domains/chemistry && uv run pytest -q
+    @echo "=== daemon tests ==="
+    cd Core/daemon && uv run pytest tests/ -q
+    @echo "=== daemon lint ==="
+    cd Core/daemon && uv run ruff check .
+    @echo "=== web build ==="
+    cd Web && npm run build
+    @echo "=== desktop ==="
+    cd Desktop && npm run typecheck && npm run build
+    @echo "=== shared ui ==="
+    cd Core/ui && npm run build
+    @echo "=== mobile ==="
+    cd Mobile && npx expo export --platform web
+    @echo "=== i18n check ==="
+    node scripts/check-i18n-keys.js
+    @echo "✅ Phase 6 smoke PASS"
+
+# ── Phase 7 smoke — full integration hardening ───────────────────────────
+
+phase7-smoke:
+    @echo "=== contracts ==="
+    cd Core/contracts && pnpm run validate && pnpm run build
+    @echo "=== framework tests ==="
+    cd Core/framework && uv run pytest -q
+    @echo "=== framework lint ==="
+    cd Core/framework && uv run ruff check .
+    @echo "=== polymer tests ==="
+    cd Domains/polymer && uv run pytest -q
+    @echo "=== materials tests ==="
+    cd Domains/materials && uv run pytest -q
+    @echo "=== biology tests ==="
+    cd Domains/biology && uv run pytest -q
+    @echo "=== chemistry tests ==="
+    cd Domains/chemistry && uv run pytest -q
+    @echo "=== daemon tests ==="
+    cd Core/daemon && uv run pytest tests/ -q
+    @echo "=== daemon lint ==="
+    cd Core/daemon && uv run ruff check .
+    @echo "=== quantum backend ==="
+    cd Core/daemon && uv run pytest tests/test_quantum_backend.py tests/test_quantum_sim_backend.py -q
+    @echo "=== federation tests ==="
+    cd Core/daemon && uv run pytest tests/test_federation_sync.py -q
+    @echo "=== audit tests ==="
+    cd Core/daemon && uv run pytest tests/test_audit.py -q
+    @echo "=== platform smoke ==="
+    cd Core/daemon && uv run pytest tests/test_platform_smoke.py -q
+    @echo "=== integration hardening ==="
+    cd Core/daemon && uv run pytest tests/test_integration_hardening.py -q
+    @echo "=== web build ==="
+    cd Web && npm run build
+    @echo "=== desktop ==="
+    cd Desktop && npm run typecheck && npm run build
+    @echo "=== shared ui ==="
+    cd Core/ui && npm run build
+    @echo "=== mobile ==="
+    cd Mobile && npx expo export --platform web
+    @echo "=== i18n check ==="
+    node scripts/check-i18n-keys.js
+    @echo "=== plugin sdk ==="
+    cd packages/create-ss-domain && npm test
+    @echo "✅ Phase 7 smoke PASS"
