@@ -209,3 +209,156 @@ def test_hybrid_quantum_metadata_present():
     result = execute_hybrid(classical_fn, quantum_fn, "t", "", [], {})
     assert result["quantum_metadata"]["shots"] == 1024
     assert result["quantum_metadata"]["circuit_depth"] == 3
+
+
+# ── Phase 8 W2: Risk assessment & hardening ─────────────────────────────────
+
+
+def test_hybrid_compute_artifact_risk_low():
+    """Low risk when circuit is shallow and few qubits."""
+    from src.runner.backends.hybrid.orchestrator import _assess_compute_artifact_risk
+
+    qr = {"quantum_metadata": {"circuit_depth": 5, "qubit_count": 3}}
+    assert _assess_compute_artifact_risk(qr) == "low"
+
+
+def test_hybrid_compute_artifact_risk_low_fallback():
+    """Low risk when quantum result is fallback (simulator)."""
+    from src.runner.backends.hybrid.orchestrator import _assess_compute_artifact_risk
+
+    qr = {"fallback": True, "quantum_metadata": {"circuit_depth": 200, "qubit_count": 50}}
+    assert _assess_compute_artifact_risk(qr) == "low"
+
+
+def test_hybrid_compute_artifact_risk_medium():
+    """Medium risk when circuit depth > 50 or qubits > 10."""
+    from src.runner.backends.hybrid.orchestrator import _assess_compute_artifact_risk
+
+    qr = {"quantum_metadata": {"circuit_depth": 60, "qubit_count": 5}}
+    assert _assess_compute_artifact_risk(qr) == "medium"
+
+    qr2 = {"quantum_metadata": {"circuit_depth": 10, "qubit_count": 15}}
+    assert _assess_compute_artifact_risk(qr2) == "medium"
+
+
+def test_hybrid_compute_artifact_risk_high():
+    """High risk when circuit depth > 100 or qubits > 20."""
+    from src.runner.backends.hybrid.orchestrator import _assess_compute_artifact_risk
+
+    qr = {"quantum_metadata": {"circuit_depth": 150, "qubit_count": 5}}
+    assert _assess_compute_artifact_risk(qr) == "high"
+
+    qr2 = {"quantum_metadata": {"circuit_depth": 10, "qubit_count": 25}}
+    assert _assess_compute_artifact_risk(qr2) == "high"
+
+
+def test_hybrid_semantic_loss_risk_high_on_failure():
+    """High semantic loss risk when quantum branch failed."""
+    from src.runner.backends.hybrid.orchestrator import _assess_semantic_loss_risk
+
+    assert _assess_semantic_loss_risk({}, {"status": "failed"}) == "high"
+    assert _assess_semantic_loss_risk({}, {"status": "error"}) == "high"
+
+
+def test_hybrid_semantic_loss_risk_low_on_fallback():
+    """Low semantic loss risk when quantum used simulator fallback."""
+    from src.runner.backends.hybrid.orchestrator import _assess_semantic_loss_risk
+
+    assert _assess_semantic_loss_risk({}, {"status": "ok", "fallback": True}) == "low"
+
+
+def test_hybrid_semantic_loss_risk_medium_default():
+    """Medium semantic loss risk is the default for real quantum execution."""
+    from src.runner.backends.hybrid.orchestrator import _assess_semantic_loss_risk
+
+    assert _assess_semantic_loss_risk({}, {"status": "ok"}) == "medium"
+
+
+def test_hybrid_result_has_risk_fields():
+    """execute_hybrid result includes compute_artifact_risk and semantic_loss_risk."""
+    from src.runner.backends.hybrid.orchestrator import execute_hybrid
+
+    def classical_fn(m, d, a, p):
+        return {"status": "ok", "result": {"mw": 50000.0}, "domain_id": "test"}
+
+    def quantum_fn(m, d, a, p):
+        return {
+            "status": "ok",
+            "counts": {"0": 1024},
+            "quantum_metadata": {"shots": 1024, "circuit_depth": 5, "qubit_count": 2},
+        }
+
+    result = execute_hybrid(classical_fn, quantum_fn, "t", "", [], {})
+    assert "compute_artifact_risk" in result
+    assert "semantic_loss_risk" in result
+    assert result["compute_artifact_risk"] == "low"
+    assert result["semantic_loss_risk"] == "medium"
+
+
+def test_hybrid_result_has_branch_count():
+    """execute_hybrid result includes branch_count=2."""
+    from src.runner.backends.hybrid.orchestrator import execute_hybrid
+
+    def classical_fn(m, d, a, p):
+        return {"status": "ok", "result": {}, "domain_id": "test"}
+
+    def quantum_fn(m, d, a, p):
+        return {"status": "ok", "counts": {}, "quantum_metadata": {"shots": 100}}
+
+    result = execute_hybrid(classical_fn, quantum_fn, "t", "", [], {})
+    assert result["branch_count"] == 2
+
+
+def test_hybrid_result_has_parallel_execution_time():
+    """execute_hybrid result includes parallel_execution_time_ms."""
+    from src.runner.backends.hybrid.orchestrator import execute_hybrid
+
+    def classical_fn(m, d, a, p):
+        return {"status": "ok", "result": {}, "domain_id": "test", "execution_time_ms": 50}
+
+    def quantum_fn(m, d, a, p):
+        return {
+            "status": "ok", "counts": {}, "execution_time_ms": 120,
+            "quantum_metadata": {"shots": 100},
+        }
+
+    result = execute_hybrid(classical_fn, quantum_fn, "t", "", [], {})
+    assert result["parallel_execution_time_ms"] == 120
+
+
+def test_hybrid_classical_authoritative():
+    """Classical branch result is authoritative for R field (section 9A.1)."""
+    from src.runner.backends.hybrid.orchestrator import execute_hybrid
+
+    def classical_fn(m, d, a, p):
+        return {"status": "ok", "result": {"mw": 42000.0, "pdi": 1.5}, "domain_id": "test"}
+
+    def quantum_fn(m, d, a, p):
+        return {
+            "status": "ok",
+            "counts": {"00": 512, "11": 512},
+            "result": {"energy": -1.23},
+            "quantum_metadata": {"shots": 1024, "simulator": "aer"},
+        }
+
+    result = execute_hybrid(classical_fn, quantum_fn, "t", "", [], {})
+    # Classical result is the primary R field content
+    assert result["classical_result"]["mw"] == 42000.0
+    assert result["classical_result"]["pdi"] == 1.5
+
+
+def test_hybrid_partial_has_risk_fields():
+    """Partial failure result still includes risk assessment fields."""
+    from src.runner.backends.hybrid.orchestrator import execute_hybrid
+
+    def classical_fn(m, d, a, p):
+        return {"status": "ok", "result": {"x": 1}, "domain_id": "test"}
+
+    def quantum_fn(m, d, a, p):
+        raise RuntimeError("QPU timeout")
+
+    result = execute_hybrid(classical_fn, quantum_fn, "t", "", [], {})
+    assert result["status"] == "partial"
+    assert "compute_artifact_risk" in result
+    assert "semantic_loss_risk" in result
+    assert result["branch_count"] == 2

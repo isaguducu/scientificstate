@@ -9,6 +9,7 @@ import { RunDetail } from "./routes/compute/RunDetail";
 import { ModuleStore } from "./routes/modules/index";
 import { ModuleDetail } from "./routes/modules/ModuleDetail";
 import { Analytics } from "./routes/analytics";
+import { QPUSettings } from "./routes/settings/QPUSettings";
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -44,12 +45,19 @@ const analyticsRoute = createRoute({
   component: Analytics,
 });
 
+const qpuSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings/qpu",
+  component: QPUSettings,
+});
+
 export const routeTree = rootRoute.addChildren([
   dashboardRoute,
   runDetailRoute,
   moduleStoreRoute,
   moduleDetailRoute,
   analyticsRoute,
+  qpuSettingsRoute,
 ]);
 
 export const router = createRouter({ routeTree });

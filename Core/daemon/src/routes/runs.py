@@ -21,6 +21,7 @@ import aiosqlite
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from src.runner.cost_gate import enforce_cost_gate, record_completion, CostGateError  # noqa: F401 — record_completion used post-dispatch
 from src.storage.schema import get_db_path
 
 logger = logging.getLogger("scientificstate.daemon.runs")
@@ -187,8 +188,23 @@ async def create_run(body: ComputeRunRequest, request: Request) -> Any:
         )
         await db.commit()
 
-    # Determine compute class and dispatch to appropriate backend
+    # Phase 8: Mandatory cost gate for quantum_hw / hybrid runs
     compute_class = body.compute_class
+    if compute_class in ("quantum_hw", "hybrid"):
+        try:
+            await enforce_cost_gate(
+                db=getattr(request.app.state, "db", None),
+                run_id=run_id,
+                user_id=body.parameters.get("user_id", "anonymous"),
+                provider=body.parameters.get("provider", "ibm_quantum"),
+                backend_name=body.parameters.get("backend_name", "default"),
+                shots=body.parameters.get("shots", 1024),
+                institution_id=body.parameters.get("institution_id"),
+            )
+        except CostGateError as e:
+            raise HTTPException(status_code=e.http_status, detail=str(e))
+
+    # Determine compute class and dispatch to appropriate backend
     if compute_class in ("quantum_sim", "quantum_hw", "hybrid"):
         # Use orchestrator registry when available, fall back to direct import
         from src.runner.orchestrator import get_backend as _get_backend

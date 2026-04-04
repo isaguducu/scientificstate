@@ -106,6 +106,71 @@ async def get_replication_history(claim_id: str) -> list[dict]:
     return engine.get_history(claim_id)
 
 
+# ── Phase 8: Institutional replication models ─────────────────────────────────
+
+
+class InstitutionalReplicationRequest(BaseModel):
+    claim_id: str
+    source_ssv_id: str
+    source_institution_id: str
+    target_institution_id: str
+    method_id: str
+    compute_class: str = "quantum_hw"
+
+
+class InstitutionalReplicationResult(BaseModel):
+    request_id: str
+    target_ssv_id: str
+    institution_id: str
+
+
+# ── Phase 8: Institutional replication routes ─────────────────────────────────
+
+
+@router.post("/institutional/request")
+async def create_institutional_request(body: InstitutionalReplicationRequest) -> dict:
+    """Create cross-institutional replication request."""
+    if body.source_institution_id == body.target_institution_id:
+        raise HTTPException(status_code=400, detail="Self-replication not allowed")
+    engine = get_engine()
+    result = engine.create_request(
+        claim_id=body.claim_id,
+        source_ssv_id=body.source_ssv_id,
+        source_institution_id=body.source_institution_id,
+        target_institution_id=body.target_institution_id,
+        method_id=body.method_id,
+        compute_class=body.compute_class,
+    )
+    return result
+
+
+@router.post("/institutional/submit")
+async def submit_institutional_result(body: InstitutionalReplicationResult) -> dict:
+    """Target institution submits replication result."""
+    engine = get_engine()
+    result = engine.submit_result(
+        request_id=body.request_id,
+        target_ssv_id=body.target_ssv_id,
+        institution_id=body.institution_id,
+    )
+    return result
+
+
+@router.get("/institutional/{claim_id}/status")
+async def get_institutional_replication_status(claim_id: str) -> dict:
+    """Get replication status for a claim across institutions."""
+    engine = get_engine()
+    history = engine.get_history(claim_id)
+    confirmed = sum(1 for r in history if r.get("status") == "confirmed")
+    pending = sum(1 for r in history if r.get("status") == "pending")
+    return {
+        "claim_id": claim_id,
+        "confirmed": confirmed,
+        "pending": pending,
+        "total": len(history),
+    }
+
+
 # ── Federation push (Phase 7 — additive) ────────────────────────────────────
 
 

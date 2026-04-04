@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { ComputeRunForm } from "../../features/compute/ComputeRunForm";
 import { ExploratoryBadge } from "../../components/ExploratoryBadge";
+import { HybridResultView } from "../../components/HybridResultView";
 
 const DAEMON = "http://127.0.0.1:9473";
 
@@ -28,6 +29,17 @@ interface ComputeRunResult {
     };
   };
   exploratory?: boolean;
+  // Phase 8 W2: hybrid fields
+  compute_class?: string;
+  classical_result?: Record<string, any>;
+  quantum_result?: Record<string, any>;
+  execution_witnesses?: {
+    classical: Record<string, any>;
+    quantum: Record<string, any>;
+  };
+  hybrid_status?: string;
+  compute_artifact_risk?: string;
+  semantic_loss_risk?: string;
 }
 
 const statusColor: Record<string, string> = {
@@ -170,6 +182,18 @@ export function RunDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Phase 8 W2: Hybrid dual-branch view */}
+      {run.compute_class === "hybrid" && (
+        <HybridResultView
+          classicalResult={run.classical_result ?? {}}
+          quantumResult={run.quantum_result ?? {}}
+          executionWitnesses={run.execution_witnesses ?? { classical: {}, quantum: {} }}
+          status={run.hybrid_status || run.status}
+          computeArtifactRisk={run.compute_artifact_risk}
+          semanticLossRisk={run.semantic_loss_risk}
+        />
       )}
 
       {run.status === "succeeded" && run.result && (

@@ -158,3 +158,88 @@ def test_get_history_empty(client):
     resp = client.get("/replication/history/nonexistent")
     assert resp.status_code == 200
     assert resp.json() == []
+
+
+# ── Phase 8: Institutional replication routes ─────────────────────────────────
+
+
+def test_create_institutional_request(client):
+    """POST /replication/institutional/request creates a cross-institutional request."""
+    resp = client.post("/replication/institutional/request", json={
+        "claim_id": "claim-inst-1",
+        "source_ssv_id": "ssv-inst-1",
+        "source_institution_id": "inst-A",
+        "target_institution_id": "inst-B",
+        "method_id": "dft-pw",
+        "compute_class": "quantum_hw",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "request_id" in data
+    assert data["status"] == "pending"
+
+
+def test_self_replication_rejected(client):
+    """POST /replication/institutional/request with same source/target returns 400."""
+    resp = client.post("/replication/institutional/request", json={
+        "claim_id": "claim-inst-2",
+        "source_ssv_id": "ssv-inst-2",
+        "source_institution_id": "inst-A",
+        "target_institution_id": "inst-A",
+        "method_id": "dft-pw",
+        "compute_class": "quantum_hw",
+    })
+    assert resp.status_code == 400
+    assert "Self-replication" in resp.json()["detail"]
+
+
+def test_submit_institutional_result(client):
+    """POST /replication/institutional/submit accepts result for valid request."""
+    from src.routes import replication as rep_module
+
+    # Register source and target SSVs in engine
+    engine = rep_module._engine
+    source_ssv = {"D": "test", "I": "id", "R": {"value": 1.0}}
+    target_ssv = {"D": "test", "I": "id", "R": {"value": 1.0}}
+    engine.register_ssv("ssv-inst-3", source_ssv)
+    engine.register_ssv("ssv-target-inst-3", target_ssv)
+
+    create_resp = client.post("/replication/institutional/request", json={
+        "claim_id": "claim-inst-3",
+        "source_ssv_id": "ssv-inst-3",
+        "source_institution_id": "inst-X",
+        "target_institution_id": "inst-Y",
+        "method_id": "md-sim",
+        "compute_class": "quantum_hw",
+    })
+    assert create_resp.status_code == 200
+    request_id = create_resp.json()["request_id"]
+
+    resp = client.post("/replication/institutional/submit", json={
+        "request_id": request_id,
+        "target_ssv_id": "ssv-target-inst-3",
+        "institution_id": "inst-Y",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["request_id"] == request_id
+
+
+def test_get_institutional_status(client):
+    """GET /replication/institutional/{claim_id}/status returns counts."""
+    client.post("/replication/institutional/request", json={
+        "claim_id": "claim-inst-4",
+        "source_ssv_id": "ssv-inst-4",
+        "source_institution_id": "inst-P",
+        "target_institution_id": "inst-Q",
+        "method_id": "dft-pw",
+        "compute_class": "quantum_hw",
+    })
+
+    resp = client.get("/replication/institutional/claim-inst-4/status")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["claim_id"] == "claim-inst-4"
+    assert data["total"] >= 1
+    assert "confirmed" in data
+    assert "pending" in data

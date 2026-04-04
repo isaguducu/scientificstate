@@ -176,6 +176,16 @@ async function checkFilesystem(): Promise<DiagnosticResult> {
   }
 }
 
+/** Safely read Node.js process.version without depending on @types/node. */
+function getNodeVersion(): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = (globalThis as any).process;
+    if (p && typeof p.version === "string") return p.version;
+  } catch { /* not in Node */ }
+  return "n/a";
+}
+
 /**
  * Build runtime fingerprint by querying daemon version endpoint and Tauri APIs.
  */
@@ -230,7 +240,7 @@ async function buildRuntimeFingerprint(): Promise<RuntimeFingerprint> {
     os,
     arch,
     os_version: osVersion,
-    node_version: typeof globalThis.process !== "undefined" ? (globalThis.process as { version?: string }).version ?? "n/a" : "n/a",
+    node_version: getNodeVersion(),
     tauri_version: tauriVersion,
     daemon_version: daemonVersion,
   };

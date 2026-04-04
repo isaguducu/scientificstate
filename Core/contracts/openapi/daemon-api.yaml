@@ -42,6 +42,8 @@ tags:
     description: Discovery sync — push endorsed claims to portal (Phase5 W2)
   - name: federation
     description: Federation push — distribute endorsed claims to trusted mirrors (Phase7)
+  - name: qpu
+    description: QPU cost tracking, quotas, and broker grants (Phase8)
 
 paths:
   /discovery/sync:
@@ -254,6 +256,9 @@ paths:
                   run_id:
                     type: string
                     description: Permanent run identifier — use with GET /runs/{run_id}
+                  cost_estimate:
+                    $ref: "#/components/schemas/CostEstimate"
+                    description: "Phase 8 — present when compute_class is quantum_hw or hybrid"
         "400":
           description: Invalid request
           content:
@@ -948,6 +953,247 @@ paths:
         "400":
           description: Missing required fields
 
+  # ── QPU cost tracking endpoints (Phase8 — BYOT + Institutional Broker) ──────
+
+  /qpu/quotas:
+    get:
+      operationId: listQuotas
+      tags: [qpu]
+      summary: List QPU quotas for current user or institution
+      description: Returns active quota records. Institution admins see all institution quotas.
+      parameters:
+        - name: institution_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by institution (admin only)
+      responses:
+        "200":
+          description: Quota list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuotaRecord"
+    post:
+      operationId: createQuota
+      tags: [qpu]
+      summary: Create a QPU quota
+      description: Institution admins create shot/budget quotas for users or the whole institution.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuotaCreate"
+      responses:
+        "201":
+          description: Quota created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotaRecord"
+        "400":
+          description: Invalid quota parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /qpu/usage:
+    get:
+      operationId: listUsage
+      tags: [qpu]
+      summary: List QPU usage log entries
+      description: Returns usage log entries for the current user. Institution admins can filter by institution.
+      parameters:
+        - name: institution_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [estimated, running, completed, failed, refunded]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Usage log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UsageLogEntry"
+
+  /qpu/usage/summary:
+    get:
+      operationId: getUsageSummary
+      tags: [qpu]
+      summary: Get aggregated QPU usage summary
+      description: Returns shot counts and cost totals grouped by provider and period.
+      parameters:
+        - name: institution_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, monthly]
+            default: monthly
+      responses:
+        "200":
+          description: Aggregated usage summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [period, total_shots, total_cost, by_provider]
+                properties:
+                  period:
+                    type: string
+                  total_shots:
+                    type: integer
+                  total_cost:
+                    type: object
+                    properties:
+                      amount:
+                        type: number
+                      currency:
+                        type: string
+                  by_provider:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        provider:
+                          type: string
+                        shots:
+                          type: integer
+                        cost:
+                          type: object
+
+  /qpu/price-snapshots:
+    post:
+      operationId: createPriceSnapshot
+      tags: [qpu]
+      summary: Create a QPU price snapshot
+      description: |
+        Records a point-in-time price for a QPU backend. INSERT-only — prices are immutable.
+        Only institution admins can create price snapshots.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PriceSnapshotCreate"
+      responses:
+        "201":
+          description: Price snapshot created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceSnapshot"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not authorized — admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /qpu/price-snapshots/active:
+    get:
+      operationId: getActivePriceSnapshots
+      tags: [qpu]
+      summary: Get currently active price snapshots
+      description: Returns the latest non-expired price snapshot for each provider/backend combination.
+      parameters:
+        - name: provider
+          in: query
+          schema:
+            type: string
+            enum: [ibm_quantum, ionq]
+      responses:
+        "200":
+          description: Active price snapshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PriceSnapshot"
+
+  /qpu/broker/grant:
+    post:
+      operationId: createBrokerGrant
+      tags: [qpu]
+      summary: Grant temporary QPU access via institutional broker
+      description: |
+        Institution admins grant time-limited QPU access to a user.
+        The grant authorizes a maximum number of shots on a specific provider.
+        Daemon validates the grant before dispatching to QPU.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrokerGrantRequest"
+      responses:
+        "201":
+          description: Grant created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [grant_id, user_id, provider, max_shots, expires_at]
+                properties:
+                  grant_id:
+                    type: string
+                    format: uuid
+                  user_id:
+                    type: string
+                  provider:
+                    type: string
+                  max_shots:
+                    type: integer
+                  expires_at:
+                    type: string
+                    format: date-time
+        "400":
+          description: Invalid grant parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not authorized — admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthResponse:
@@ -1136,6 +1382,9 @@ components:
           type: string
           enum: [classical, quantum_sim, quantum_hw, hybrid]
           description: "Optional compute class hint — defaults to classical if omitted"
+        backend_hint:
+          type: string
+          description: "Phase 8 — optional QPU backend hint (e.g. 'ibm_brisbane', 'ionq_aria'). Daemon resolves availability."
       additionalProperties: false
 
     ComputeRunResult:
@@ -1488,3 +1737,207 @@ components:
         ssv_hash:
           type: string
           description: SHA-256 integrity check
+
+    # ── QPU cost tracking schemas (Phase8) ──────────────────────────────
+
+    CostEstimate:
+      type: object
+      required: [currency, min, max, shots]
+      properties:
+        currency:
+          type: string
+          description: ISO 4217 currency code
+          example: "USD"
+        min:
+          type: number
+          description: Minimum estimated cost
+        max:
+          type: number
+          description: Maximum estimated cost
+        unit_price:
+          type: number
+          description: Price per shot used for estimation
+        shots:
+          type: integer
+          description: Number of shots in the estimate
+
+    QuotaCreate:
+      type: object
+      required: [period, shot_limit, period_start, period_end]
+      properties:
+        institution_id:
+          type: string
+          format: uuid
+          description: Institution scope — null for personal quota
+        user_id:
+          type: string
+          description: ORCID of the target user — null for institution-wide quota
+        period:
+          type: string
+          enum: [daily, monthly]
+        shot_limit:
+          type: integer
+          description: Maximum shots allowed in the period
+        budget_limit:
+          type: object
+          properties:
+            amount:
+              type: number
+            currency:
+              type: string
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+
+    QuotaRecord:
+      type: object
+      required: [quota_id, period, shot_limit, shot_used, period_start, period_end]
+      properties:
+        quota_id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        period:
+          type: string
+          enum: [daily, monthly]
+        shot_limit:
+          type: integer
+        shot_used:
+          type: integer
+        budget_limit:
+          type: object
+        budget_used:
+          type: object
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UsageLogEntry:
+      type: object
+      required: [log_id, run_id, user_id, provider, backend_name, shots, estimated_cost, status]
+      properties:
+        log_id:
+          type: string
+          format: uuid
+        run_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        institution_id:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          enum: [ibm_quantum, ionq]
+        backend_name:
+          type: string
+        shots:
+          type: integer
+        estimated_cost:
+          type: object
+        actual_cost:
+          type: object
+        status:
+          type: string
+          enum: [estimated, running, completed, failed, refunded]
+        price_snapshot_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    PriceSnapshotCreate:
+      type: object
+      required: [provider, backend_name, source, effective_at]
+      properties:
+        provider:
+          type: string
+          enum: [ibm_quantum, ionq]
+        backend_name:
+          type: string
+          description: QPU backend identifier (e.g. "ibm_brisbane", "ionq_aria")
+        price_per_shot:
+          type: number
+        price_per_task:
+          type: number
+        currency:
+          type: string
+          default: "USD"
+        source:
+          type: string
+          enum: [manual, api_fetch, provider_docs]
+        effective_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+
+    PriceSnapshot:
+      type: object
+      required: [snapshot_id, provider, backend_name, currency, source, effective_at]
+      properties:
+        snapshot_id:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          enum: [ibm_quantum, ionq]
+        backend_name:
+          type: string
+        price_per_shot:
+          type: number
+        price_per_task:
+          type: number
+        currency:
+          type: string
+        source:
+          type: string
+          enum: [manual, api_fetch, provider_docs]
+        effective_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    BrokerGrantRequest:
+      type: object
+      required: [user_id, institution_id, provider, max_shots, expires_in_minutes]
+      properties:
+        user_id:
+          type: string
+          description: ORCID of the grantee
+        institution_id:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          enum: [ibm_quantum, ionq]
+        max_shots:
+          type: integer
+          description: Maximum shots authorized by this grant
+        expires_in_minutes:
+          type: integer
+          description: Grant validity duration in minutes
