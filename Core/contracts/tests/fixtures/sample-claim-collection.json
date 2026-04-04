@@ -1,0 +1,11 @@
+{
+  "author_orcid": "0000-0002-1234-5678",
+  "title": "Polymer Degradation Analysis 2026",
+  "description": "Collection of endorsed claims from polymer degradation research",
+  "claim_ids": [
+    "claim-polymer-001",
+    "claim-polymer-002",
+    "claim-polymer-003"
+  ],
+  "status": "published"
+}

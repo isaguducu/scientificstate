@@ -32,6 +32,12 @@ class ClassicalBackend(ComputeBackend):
         params: dict,
     ) -> dict:
         """Find the domain in the registry and call execute_method()."""
+        if self._registry is None:
+            raise ValueError(
+                "ClassicalBackend requires a domain_registry — "
+                "pass it via constructor"
+            )
+
         domain_id = params.get("domain_id")
         if not domain_id:
             raise ValueError("params must include 'domain_id'")

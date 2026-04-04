@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "claim-collection.schema.json",
+  "title": "ClaimCollection",
+  "description": "Presentation layer — scientific value lives in SSV+Claim, not in the collection",
+  "type": "object",
+  "required": ["author_orcid", "title", "claim_ids"],
+  "properties": {
+    "author_orcid": {
+      "type": "string",
+      "description": "ORCID of the collection author"
+    },
+    "title": {
+      "type": "string",
+      "description": "Collection title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description of the collection"
+    },
+    "claim_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Endorsed claim IDs included in this collection"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "published"],
+      "default": "draft",
+      "description": "Publication status"
+    }
+  },
+  "additionalProperties": false
+}

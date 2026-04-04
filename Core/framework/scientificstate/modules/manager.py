@@ -8,6 +8,14 @@ Constitutional rule (P9 reversibility):
 
 The manager uses signer/verifier for trust-chain enforcement:
   Only signed modules with valid signatures may be installed.
+
+M3 verification chain (6 steps):
+  1. Ed25519 signature verify              (P1 — existing)
+  2. TUF targets hash verify               (P2 — existing)
+  3. TUF delegated targets verify          (M3 — NEW)
+  4. Sigstore-only verify                  (M3 — Ed25519 alone insufficient)
+  5. Permission manifest check             (M2 — existing)
+  6. Kernel sandbox execute                (M3 — NEW)
 """
 from __future__ import annotations
 
@@ -16,6 +24,7 @@ import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from scientificstate.modules.verifier import verify_manifest
 
@@ -50,6 +59,10 @@ class ModuleManager:
     def __init__(self, modules_dir: Path) -> None:
         self.modules_dir = modules_dir
         self._tuf_targets: dict | None = None  # Optional TUF targets metadata
+        self._delegated_targets: dict | None = None  # M3: delegated targets metadata
+        self._root_targets_for_delegation: dict | None = None  # M3: root targets with delegations
+        self._sigstore_required: bool = True  # M3: Sigstore mandatory by default
+        self._sandbox_enabled: bool = False  # M3: kernel sandbox (opt-in)
 
     def set_tuf_targets(self, targets_meta: dict) -> None:
         """Set TUF targets metadata for hash verification during install.
@@ -59,6 +72,28 @@ class ModuleManager:
         """
         self._tuf_targets = targets_meta
 
+    def set_delegated_targets(
+        self,
+        root_targets: dict[str, Any],
+        delegated_meta: dict[str, Any],
+    ) -> None:
+        """Set TUF delegated targets for M3 delegation chain verification.
+
+        Args:
+            root_targets: root targets metadata containing delegation entries.
+            delegated_meta: delegated targets metadata signed by delegate key.
+        """
+        self._root_targets_for_delegation = root_targets
+        self._delegated_targets = delegated_meta
+
+    def set_sigstore_required(self, required: bool) -> None:
+        """Control Sigstore enforcement (M3 default: True)."""
+        self._sigstore_required = required
+
+    def set_sandbox_enabled(self, enabled: bool) -> None:
+        """Enable/disable kernel sandbox execution after install."""
+        self._sandbox_enabled = enabled
+
     def install(
         self,
         manifest_bytes: bytes,
@@ -67,12 +102,13 @@ class ModuleManager:
     ) -> InstallResult:
         """Install a module after verifying its manifest signature.
 
-        Steps:
-          1. Parse manifest JSON to extract domain_id, version, signature
-          2. Verify Ed25519 signature (reject if unsigned or invalid)
-          3. Verify package checksum (sha256 in manifest)
-          4. Extract/write package to modules_dir/{domain_id}/v{version}/
-          5. Return InstallResult
+        M3 verification chain (6 steps):
+          1. Ed25519 signature verify           (P1)
+          2. TUF targets hash verify            (P2, optional)
+          3. TUF delegated targets verify       (M3, optional)
+          4. Sigstore-only verify               (M3, mandatory by default)
+          5. Permission manifest check          (M2, advisory)
+          6. Write to disk                      (kernel sandbox at execution time)
 
         Args:
             manifest_bytes: raw manifest JSON bytes (what was signed)
@@ -83,7 +119,7 @@ class ModuleManager:
             InstallResult with success=True and install_path on success,
             or success=False with error message on any failure.
         """
-        # ── Parse manifest ────────────────────────────────────────────────
+        # ── Step 0: Parse manifest ────────────────────────────────────────
         try:
             manifest = json.loads(manifest_bytes)
         except (json.JSONDecodeError, ValueError) as exc:
@@ -95,18 +131,13 @@ class ModuleManager:
         domain_id = manifest.get("domain_id", "unknown")
         version = manifest.get("version", "unknown")
 
-        # ── Verify signature ──────────────────────────────────────────────
-        # Schema: signature = {algorithm, public_key_id, value} | null
-        # Canonical bytes = manifest WITHOUT the embedded signature field.
-        # This avoids the chicken-and-egg problem: the signature covers
-        # the content, not the container that holds the signature itself.
+        # ── Step 1: Ed25519 signature verify (P1) ────────────────────────
         sig_field = manifest.get("signature")
         if isinstance(sig_field, dict):
-            signature_hex = sig_field.get("value")  # object → extract .value
+            signature_hex = sig_field.get("value")
         elif sig_field is None:
-            signature_hex = None  # unsigned → will be rejected by verifier
+            signature_hex = None
         else:
-            # Unexpected type — reject with a descriptive message (type-safe)
             return InstallResult(
                 success=False, domain_id=domain_id, version=version,
                 install_path=None,
@@ -123,13 +154,11 @@ class ModuleManager:
             )
 
         # ── Verify package checksum ───────────────────────────────────────
-        # Schema: checksum = {algorithm: "sha256"|"sha512", value: hex-string}
         checksum_field = manifest.get("checksum")
         if isinstance(checksum_field, dict):
             expected_checksum = checksum_field.get("value")
             algorithm = checksum_field.get("algorithm", "sha256")
         else:
-            # Legacy or missing — skip checksum validation gracefully
             expected_checksum = None
             algorithm = "sha256"
         if expected_checksum:
@@ -143,7 +172,7 @@ class ModuleManager:
                     install_path=None, error="package checksum mismatch"
                 )
 
-        # ── TUF targets hash verification (P2, optional) ──────────────────
+        # ── Step 2: TUF targets hash verify (P2, optional) ───────────────
         if self._tuf_targets is not None:
             from scientificstate.modules.tuf.targets import verify_target_hash
 
@@ -156,18 +185,54 @@ class ModuleManager:
                     error="TUF target hash mismatch — install rejected",
                 )
 
-        # ── Sigstore verification (P2, advisory only) ────────────────────
+        # ── Step 3: TUF delegated targets verify (M3, optional) ──────────
+        if self._delegated_targets is not None and self._root_targets_for_delegation is not None:
+            from scientificstate.modules.tuf.delegated import verify_delegated_target
+
+            target_path = f"{domain_id}/{version}/module.tar.gz"
+            actual_hash = hashlib.sha256(package_bytes).hexdigest()
+            if not verify_delegated_target(
+                target_path, actual_hash,
+                self._root_targets_for_delegation,
+                self._delegated_targets,
+            ):
+                return InstallResult(
+                    success=False, domain_id=domain_id, version=version,
+                    install_path=None,
+                    error="TUF delegated target verification failed — install rejected",
+                )
+
+        # ── Step 4: Sigstore-only verify (M3, mandatory by default) ──────
         sigstore_bundle = manifest.get("sigstore_bundle")
-        if sigstore_bundle:
+        if self._sigstore_required:
             from scientificstate.modules.sigstore_verify import (
                 verify_sigstore_signature,
             )
 
+            result = verify_sigstore_signature(package_bytes, sigstore_bundle)
+            if not result["valid"]:
+                return InstallResult(
+                    success=False, domain_id=domain_id, version=version,
+                    install_path=None,
+                    error=f"Sigstore verification failed (M3 mandatory): {result['reason']}",
+                )
+        elif sigstore_bundle:
+            # Sigstore not required but bundle present — verify advisory
+            from scientificstate.modules.sigstore_verify import (
+                verify_sigstore_signature,
+            )
             verify_sigstore_signature(package_bytes, sigstore_bundle)
-            # M2: advisory only — result logged but does not block install.
-            # M3: this will become mandatory for new modules.
 
-        # ── Write to disk ─────────────────────────────────────────────────
+        # ── Step 5: Permission manifest check (M2, advisory) ─────────────
+        permission = manifest.get("permission")
+        if permission:
+            from scientificstate.modules.sandbox.config import sandbox_config_from_permission
+
+            # Validate that permission manifest produces a valid config
+            # (this is advisory — does not block install, but logs warnings)
+            sandbox_config_from_permission(permission)
+
+        # ── Step 6: Write to disk ─────────────────────────────────────────
         install_path = self.modules_dir / domain_id / f"v{version}"
         try:
             install_path.mkdir(parents=True, exist_ok=True)
@@ -183,6 +248,41 @@ class ModuleManager:
             success=True, domain_id=domain_id, version=version,
             install_path=install_path
         )
+
+    def execute_in_sandbox(
+        self,
+        domain_id: str,
+        command: list[str],
+        *,
+        permission: dict[str, Any] | None = None,
+    ) -> tuple[int, str, str]:
+        """Execute a command inside the kernel sandbox for a module.
+
+        This is the M3 kernel sandbox execution (Step 6 of the chain).
+        Called at RUN time, not at install time.
+
+        Args:
+            domain_id: installed module to sandbox.
+            command: command + arguments to run.
+            permission: permission manifest dict (flat shape).
+                If None, uses a restrictive default.
+
+        Returns:
+            (exit_code, stdout, stderr) tuple.
+        """
+        from scientificstate.modules.sandbox import get_sandbox
+        from scientificstate.modules.sandbox.config import sandbox_config_from_permission
+
+        module_dir = self.modules_dir / domain_id
+        perm = permission or {}
+        config = sandbox_config_from_permission(
+            perm,
+            module_dir=str(module_dir),
+        )
+
+        sandbox = get_sandbox()
+        result = sandbox.execute(command, config, cwd=str(module_dir))
+        return result.exit_code, result.stdout, result.stderr
 
     def remove(self, domain_id: str) -> RemoveResult:
         """Remove an installed module.

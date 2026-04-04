@@ -116,6 +116,7 @@ def test_manager_install_with_tuf_matching_hash():
 
     with tempfile.TemporaryDirectory() as tmp:
         mgr = ModuleManager(modules_dir=Path(tmp) / "modules")
+        mgr.set_sigstore_required(False)  # P2 TUF tests predate M3 Sigstore
         manifest_bytes, pkg, pub, tuf_targets = _make_manifest_with_tuf()
         mgr.set_tuf_targets(tuf_targets)
         result = mgr.install(manifest_bytes, pkg, pub)
@@ -127,6 +128,7 @@ def test_manager_install_with_tuf_mismatching_hash_rejected():
 
     with tempfile.TemporaryDirectory() as tmp:
         mgr = ModuleManager(modules_dir=Path(tmp) / "modules")
+        mgr.set_sigstore_required(False)  # P2 TUF tests predate M3 Sigstore
         manifest_bytes, pkg, pub, tuf_targets = _make_manifest_with_tuf()
 
         # Tamper with TUF targets — set wrong hash
@@ -143,6 +145,7 @@ def test_manager_install_without_tuf_targets_skips_check():
 
     with tempfile.TemporaryDirectory() as tmp:
         mgr = ModuleManager(modules_dir=Path(tmp) / "modules")
+        mgr.set_sigstore_required(False)  # P2 TUF tests predate M3 Sigstore
         manifest_bytes, pkg, pub, _ = _make_manifest_with_tuf()
         # Do NOT set TUF targets — should skip TUF check
         result = mgr.install(manifest_bytes, pkg, pub)

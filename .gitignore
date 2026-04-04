@@ -71,3 +71,8 @@ local_state/
 # Build artifacts
 *.whl
 *.tar.gz
+
+# AI assistant config
+.claude/
+CLAUDE.md
+**/CLAUDE.md

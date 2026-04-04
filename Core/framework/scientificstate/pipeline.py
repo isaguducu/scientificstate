@@ -47,6 +47,7 @@ def execute_pipeline(
     assumptions: list,
     dataset_ref: str | None,
     workspace_id: str,
+    parameters: dict | None = None,
 ) -> PipelineResult:
     """Execute the full scientific state pipeline.
 
@@ -58,6 +59,7 @@ def execute_pipeline(
         assumptions: list of assumption dicts (P3 — caller must provide non-empty list)
         dataset_ref: optional file path or URI to input dataset
         workspace_id: owning workspace identifier
+        parameters: user-provided method parameters (merged with manifest defaults)
 
     Returns:
         PipelineResult containing run, ssv, claim, gate_result, incomplete_flags.
@@ -70,12 +72,24 @@ def execute_pipeline(
     method_manifest = manifests.get(method_id, {"method_id": method_id, "parameters": {}})
 
     # ── Step 2: execute domain method ─────────────────────────────────────
-    raw_result = domain.execute_method(
-        method_id=method_id,
-        data_ref=dataset_ref or "",
-        assumptions=assumptions,
-        params=method_manifest.get("parameters", {}),
-    )
+    # Merge manifest defaults with user-provided parameters (user wins)
+    merged_params = {**method_manifest.get("parameters", {}), **(parameters or {})}
+
+    # If a backend already executed (quantum/hybrid), use its result directly
+    # instead of re-running through the domain. The daemon injects
+    # _backend_result when compute_class != "classical".
+    backend_result = merged_params.pop("_backend_result", None)
+    compute_class = merged_params.pop("_compute_class", "classical")
+
+    if backend_result is not None and isinstance(backend_result, dict):
+        raw_result = backend_result
+    else:
+        raw_result = domain.execute_method(
+            method_id=method_id,
+            data_ref=dataset_ref or "",
+            assumptions=assumptions,
+            params=merged_params,
+        )
 
     # ── Step 3: build a ComputeRun record ─────────────────────────────────
     run = ComputeRun(
@@ -99,7 +113,19 @@ def execute_pipeline(
     # ── Step 5: create draft claim ────────────────────────────────────────
     claim = create_claim_from_ssv(ssv=ssv, question_ref=method_id)
 
-    # ── Step 5b: exploratory hard block (Main_Source §9A.3) ───────────────
+    # ── Step 5b: quantum provenance + exploratory hard block (Main_Source §9A.3) ─
+    # Propagate compute_class and quantum_metadata to the claim so that
+    # gate_quantum_baseline (QB) and gate_quantum_metadata (QM) can fire.
+    if compute_class != "classical":
+        claim["compute_class"] = compute_class
+    if isinstance(raw_result, dict):
+        qm = raw_result.get("quantum_metadata")
+        if qm:
+            claim["quantum_metadata"] = qm
+        cbr = raw_result.get("classical_baseline_ref") or raw_result.get("classical_baseline_ssv_id")
+        if cbr:
+            claim["classical_baseline_ref"] = cbr
+
     # Quantum simulation runs are automatically exploratory.
     # Exploratory claims CANNOT enter the endorsable path:
     #   - H1 gate is unconditionally blocked

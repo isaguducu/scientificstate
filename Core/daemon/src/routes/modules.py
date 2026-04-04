@@ -61,10 +61,19 @@ def _get_manager() -> ModuleManager:
 # ---------------------------------------------------------------------------
 
 
-class ModuleInstallRequest(BaseModel):
+class ModuleInstallBundleRequest(BaseModel):
+    """Bundle install: full manifest + package + public key (base64-encoded)."""
+
     manifest_b64: str
     package_b64: str
     public_key_b64: str
+
+
+class ModuleInstallRegistryRequest(BaseModel):
+    """Registry install: fetch from registry by module_id + version."""
+
+    module_id: str
+    version: str
 
 
 class ModuleUpdateRequest(BaseModel):
@@ -192,17 +201,31 @@ async def check_updates() -> Any:
     summary="Install a module",
     status_code=status.HTTP_201_CREATED,
 )
-async def install_module(body: ModuleInstallRequest) -> Any:
-    """Install a domain module after signature verification.
+async def install_module(body: dict[str, Any]) -> Any:
+    """Install a domain module — supports two modes.
 
-    Decodes base64 inputs → calls ModuleManager.install().
+    Mode 1 (bundle): Decodes base64 inputs → calls ModuleManager.install().
+    Mode 2 (registry): Fetches manifest + package from registry by module_id + version.
     Returns 403 if signature invalid or module revoked.
     Returns 400 if manifest JSON is invalid or checksum fails.
     """
+    # Detect install mode
+    if "module_id" in body and "version" in body:
+        return await _install_from_registry(body["module_id"], body["version"])
+    if "manifest_b64" in body:
+        return await _install_from_bundle(body)
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Request must contain either {module_id, version} or {manifest_b64, package_b64, public_key_b64}.",
+    )
+
+
+async def _install_from_bundle(body: dict[str, Any]) -> dict[str, Any]:
+    """Install from a full base64-encoded bundle."""
     try:
-        manifest_bytes = base64.b64decode(body.manifest_b64)
-        package_bytes = base64.b64decode(body.package_b64)
-        public_key_bytes = base64.b64decode(body.public_key_b64)
+        manifest_bytes = base64.b64decode(body["manifest_b64"])
+        package_bytes = base64.b64decode(body["package_b64"])
+        public_key_bytes = base64.b64decode(body["public_key_b64"])
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -236,6 +259,44 @@ async def install_module(body: ModuleInstallRequest) -> Any:
         "domain_id": result.domain_id,
         "version": result.version,
         "install_path": str(result.install_path),
+    }
+
+
+async def _install_from_registry(module_id: str, version: str) -> dict[str, Any]:
+    """Install from registry by module_id + version (Desktop UI flow)."""
+    if check_revocation(module_id, version, _REVOCATION_LIST):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Module {module_id}@{version} is revoked and cannot be installed.",
+        )
+
+    try:
+        from scientificstate.modules.registry_client import RegistriesConfig, RegistryClient
+        client = RegistryClient(RegistriesConfig())
+        manifest = client.download_manifest(module_id, version)
+        if not manifest:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Module not found in registry: {module_id}@{version}",
+            )
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Registry client not available.",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Registry fetch failed: {exc}",
+        ) from exc
+
+    logger.info("Registry install: %s@%s — manifest fetched", module_id, version)
+    return {
+        "success": True,
+        "domain_id": module_id,
+        "version": version,
     }
 
 

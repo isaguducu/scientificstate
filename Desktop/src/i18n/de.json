@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "modules": "Module",
+    "compute": "Berechnung",
+    "settings": "Einstellungen"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "recent_runs": "Letzte Ausführungen",
+    "installed_modules": "Installierte Module",
+    "no_runs": "Noch keine Berechnungen durchgeführt."
+  },
+  "modules": {
+    "title": "Modul-Store",
+    "search": "Module suchen...",
+    "install": "Installieren",
+    "uninstall": "Deinstallieren",
+    "installed": "Installiert",
+    "available": "Verfügbar"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline",
+    "pending": "Ausstehend",
+    "succeeded": "Erfolgreich",
+    "failed": "Fehlgeschlagen"
+  }
+}

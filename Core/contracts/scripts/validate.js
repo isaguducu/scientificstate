@@ -44,6 +44,11 @@ function run() {
     "module-publish-request": loadJSON("jsonschema/module-publish-request.schema.json"),
     "quantum-run-request": loadJSON("jsonschema/quantum-run-request.schema.json"),
     "quantum-run-result": loadJSON("jsonschema/quantum-run-result.schema.json"),
+    "replication-request": loadJSON("jsonschema/replication-request.schema.json"),
+    "replication-result": loadJSON("jsonschema/replication-result.schema.json"),
+    "rocrate-profile": loadJSON("jsonschema/rocrate-profile.schema.json"),
+    "citation": loadJSON("jsonschema/citation.schema.json"),
+    "claim-collection": loadJSON("jsonschema/claim-collection.schema.json"),
   };
 
   // Add all schemas to AJV registry first (enables cross-$ref resolution)
@@ -116,6 +121,26 @@ function run() {
       label: "quantum-run-result",
       schema: schemas["quantum-run-result"],
       fixture: loadJSON("tests/fixtures/sample-quantum-run-result.json"),
+    },
+    {
+      label: "replication-request",
+      schema: schemas["replication-request"],
+      fixture: loadJSON("tests/fixtures/sample-replication-request.json"),
+    },
+    {
+      label: "replication-result",
+      schema: schemas["replication-result"],
+      fixture: loadJSON("tests/fixtures/sample-replication-result.json"),
+    },
+    {
+      label: "citation",
+      schema: schemas["citation"],
+      fixture: loadJSON("tests/fixtures/sample-citation.json"),
+    },
+    {
+      label: "claim-collection",
+      schema: schemas["claim-collection"],
+      fixture: loadJSON("tests/fixtures/sample-claim-collection.json"),
     },
   ];
 

@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "dashboard": "仪表盘",
+    "modules": "模块",
+    "compute": "计算",
+    "settings": "设置"
+  },
+  "dashboard": {
+    "title": "仪表盘",
+    "recent_runs": "最近运行",
+    "installed_modules": "已安装模块",
+    "no_runs": "尚无计算运行记录。"
+  },
+  "modules": {
+    "title": "模块商店",
+    "search": "搜索模块...",
+    "install": "安装",
+    "uninstall": "卸载",
+    "installed": "已安装",
+    "available": "可用"
+  },
+  "status": {
+    "online": "在线",
+    "offline": "离线",
+    "pending": "待处理",
+    "succeeded": "成功",
+    "failed": "失败"
+  }
+}

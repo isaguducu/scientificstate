@@ -21,7 +21,8 @@ from fastapi.middleware.cors import CORSMiddleware
 # Add parent to path so imports work when running directly
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.routes import domains, health, ingest, modules, runs, workspaces
+from src.routes import diagnostics, discovery, domains, export, health, ingest, modules, monitoring, registry, replication, runs, workspaces
+from src.routes.monitoring import MetricsMiddleware
 from src.storage.schema import init_db
 
 logger = logging.getLogger("scientificstate.daemon")
@@ -74,6 +75,9 @@ app = FastAPI(
 )
 
 # Localhost-only CORS (Desktop WebView connects from file:// or localhost origin)
+# Metrics middleware — counts requests and errors for /monitoring/metrics
+app.add_middleware(MetricsMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -98,6 +102,12 @@ app.include_router(ingest.router)
 app.include_router(workspaces.router)
 app.include_router(runs.router)
 app.include_router(modules.router)
+app.include_router(registry.router)
+app.include_router(export.router)
+app.include_router(replication.router)
+app.include_router(discovery.router)
+app.include_router(diagnostics.router)
+app.include_router(monitoring.router)
 
 
 # ---------------------------------------------------------------------------

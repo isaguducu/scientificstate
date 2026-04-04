@@ -41,8 +41,21 @@ def create_ssv_from_run_result(
     incomplete_flags: list[str] = []
 
     # ── R: inference results ──────────────────────────────────────────────
+    # For hybrid runs, results are split across classical_result and counts;
+    # compose them into a single quantities dict.
+    base_result = run_result.get("result") or {}
+    if run_result.get("classical_result") is not None or run_result.get("counts") is not None:
+        hybrid_quantities: dict = {}
+        if run_result.get("classical_result") is not None:
+            hybrid_quantities["classical"] = run_result["classical_result"]
+        if run_result.get("counts") is not None:
+            hybrid_quantities["quantum_counts"] = run_result["counts"]
+        if run_result.get("branch_errors"):
+            hybrid_quantities["branch_errors"] = run_result["branch_errors"]
+        base_result = hybrid_quantities
+
     r = {
-        "quantities": run_result.get("result") or {},
+        "quantities": base_result,
         "method": method_manifest.get("method_id", ""),
         "notes": "",
     }
@@ -94,7 +107,13 @@ def create_ssv_from_run_result(
 
     # ── P: provenance ─────────────────────────────────────────────────────
     quantum_metadata = run_result.get("quantum_metadata")
-    compute_class = "quantum_sim" if quantum_metadata else "classical"
+    explicit_cc = run_result.get("compute_class")
+    if explicit_cc:
+        compute_class = explicit_cc
+    elif quantum_metadata:
+        compute_class = "quantum_sim"
+    else:
+        compute_class = "classical"
 
     p: dict = {
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -110,6 +129,20 @@ def create_ssv_from_run_result(
     # Quantum metadata → embedded in provenance (Main_Source §9A.3)
     if quantum_metadata:
         p["quantum_metadata"] = quantum_metadata
+        # Enrich execution_witness with hardware-specific fields
+        ew = p["execution_witness"]
+        if quantum_metadata.get("backend_name"):
+            ew["backend_id"] = quantum_metadata["backend_name"]
+        for field in ("shots", "execution_time_ms", "circuit_depth", "qubit_count", "provider"):
+            if field in quantum_metadata:
+                ew[field] = quantum_metadata[field]
+
+    # Hybrid execution witnesses — preserve per-branch provenance
+    if run_result.get("execution_witnesses"):
+        p["execution_witnesses"] = run_result["execution_witnesses"]
+    # Hybrid run status (ok / partial / error)
+    if run_result.get("status") in ("partial", "error"):
+        p["hybrid_status"] = run_result["status"]
 
     # Exploratory flag — quantum runs are automatically exploratory
     if run_result.get("exploratory"):

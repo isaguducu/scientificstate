@@ -1,0 +1,7 @@
+{
+  "source_claim_id": "claim-polymer-001",
+  "cited_claim_id": "claim-materials-042",
+  "relationship": "builds_upon",
+  "cited_by_orcid": "0000-0002-1234-5678",
+  "cited_at": "2026-04-01T10:00:00Z"
+}

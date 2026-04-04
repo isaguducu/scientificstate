@@ -1,0 +1,130 @@
+name: Phase 5 CI
+
+on:
+  push:
+    branches: [main, phase5/*]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Contracts ────────────────────────────────────────────────────────────
+  contracts:
+    name: Contracts validate + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @scientificstate/contracts run validate
+      - run: pnpm --filter @scientificstate/contracts run build
+
+  # ── Framework ────────────────────────────────────────────────────────────
+  framework:
+    name: Framework
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Core/framework && uv sync --extra dev
+      - run: cd Core/framework && uv run pytest -q
+      - run: cd Core/framework && uv run ruff check .
+
+  # ── Daemon ───────────────────────────────────────────────────────────────
+  daemon:
+    name: Daemon
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv run pytest tests/ -q
+      - run: cd Core/daemon && uv run ruff check .
+
+  # ── Polymer domain ──────────────────────────────────────────────────────
+  polymer:
+    name: Polymer domain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Domains/polymer && uv sync --extra dev
+      - run: cd Domains/polymer && uv run pytest -q
+
+  # ── Materials domain ────────────────────────────────────────────────────
+  materials:
+    name: Materials domain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cd Domains/materials && uv sync --extra dev
+      - run: cd Domains/materials && uv run pytest -q
+
+  # ── Shared UI ───────────────────────────────────────────────────────────
+  shared-ui:
+    name: Shared UI build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd Core/ui && npm ci && npm run build
+
+  # ── Web build ───────────────────────────────────────────────────────────
+  web:
+    name: Web build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd Web && npm ci
+      - run: cd Web && npm run build
+
+  # ── Desktop typecheck + build ───────────────────────────────────────────
+  desktop:
+    name: Desktop typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Desktop/package-lock.json
+      - run: cd Desktop && npm ci
+      - run: cd Desktop && npm run typecheck
+      - run: cd Desktop && npm run build

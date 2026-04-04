@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "modules": "Modules",
+    "compute": "Compute",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "recent_runs": "Recent Runs",
+    "installed_modules": "Installed Modules",
+    "no_runs": "No compute runs yet."
+  },
+  "modules": {
+    "title": "Module Store",
+    "search": "Search modules...",
+    "install": "Install",
+    "uninstall": "Uninstall",
+    "installed": "Installed",
+    "available": "Available"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline",
+    "pending": "Pending",
+    "succeeded": "Succeeded",
+    "failed": "Failed"
+  }
+}

@@ -8,6 +8,7 @@ import { Dashboard } from "./routes/dashboard";
 import { RunDetail } from "./routes/compute/RunDetail";
 import { ModuleStore } from "./routes/modules/index";
 import { ModuleDetail } from "./routes/modules/ModuleDetail";
+import { Analytics } from "./routes/analytics";
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -37,11 +38,18 @@ const moduleDetailRoute = createRoute({
   component: ModuleDetail,
 });
 
+const analyticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/analytics",
+  component: Analytics,
+});
+
 export const routeTree = rootRoute.addChildren([
   dashboardRoute,
   runDetailRoute,
   moduleStoreRoute,
   moduleDetailRoute,
+  analyticsRoute,
 ]);
 
 export const router = createRouter({ routeTree });

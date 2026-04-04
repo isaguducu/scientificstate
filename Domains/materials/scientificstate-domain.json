@@ -1,0 +1,24 @@
+{
+  "domain_id": "materials_science",
+  "display_name": "Materials Science",
+  "version": "0.1.0",
+  "description": "Materials characterization: XRD, tensile testing, DSC thermal analysis",
+  "methods": [
+    {
+      "method_id": "xrd_analysis",
+      "display_name": "X-Ray Diffraction Analysis",
+      "description": "Crystal structure, phase identification, lattice parameters"
+    },
+    {
+      "method_id": "tensile_test",
+      "display_name": "Tensile Test",
+      "description": "Stress-strain curves, Young's modulus, yield strength, elongation at break"
+    },
+    {
+      "method_id": "dsc_thermal",
+      "display_name": "DSC Thermal Analysis",
+      "description": "Glass transition, melting point, crystallization, enthalpy"
+    }
+  ],
+  "dependencies": ["numpy", "scipy"]
+}

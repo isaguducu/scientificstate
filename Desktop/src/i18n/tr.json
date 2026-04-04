@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "dashboard": "Gösterge Paneli",
+    "modules": "Modüller",
+    "compute": "Hesaplama",
+    "settings": "Ayarlar"
+  },
+  "dashboard": {
+    "title": "Gösterge Paneli",
+    "recent_runs": "Son Çalıştırmalar",
+    "installed_modules": "Kurulu Modüller",
+    "no_runs": "Henüz hesaplama çalıştırması yok."
+  },
+  "modules": {
+    "title": "Modül Mağazası",
+    "search": "Modül ara...",
+    "install": "Kur",
+    "uninstall": "Kaldır",
+    "installed": "Kurulu",
+    "available": "Mevcut"
+  },
+  "status": {
+    "online": "Çevrimiçi",
+    "offline": "Çevrimdışı",
+    "pending": "Beklemede",
+    "succeeded": "Başarılı",
+    "failed": "Başarısız"
+  }
+}

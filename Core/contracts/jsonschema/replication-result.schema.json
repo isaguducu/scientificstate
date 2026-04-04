@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "replication-result.schema.json",
+  "title": "ReplicationResult",
+  "description": "Result of an independent institutional replication attempt (Main_Source §9A.5 M3-G).",
+  "type": "object",
+  "required": ["request_id", "status", "source_ssv_id", "target_ssv_id"],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "description": "Identifier of the replication request"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["confirmed", "partially_confirmed", "not_confirmed", "failed", "pending"],
+      "description": "Replication outcome status"
+    },
+    "source_ssv_id": {
+      "type": "string",
+      "description": "SSV identifier of the original claim"
+    },
+    "target_ssv_id": {
+      "type": "string",
+      "description": "SSV identifier of the replication run"
+    },
+    "comparison_report": {
+      "type": "object",
+      "description": "Detailed comparison between source and target SSVs",
+      "properties": {
+        "result_match": {
+          "type": "boolean",
+          "description": "Whether results match within tolerance"
+        },
+        "tolerance_used": {
+          "type": "object",
+          "description": "Tolerance parameters used for comparison",
+          "properties": {
+            "absolute": { "type": "number" },
+            "relative": { "type": "number" }
+          }
+        },
+        "differences": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "List of field-level differences found"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score of the replication (1.0 = exact match)"
+        }
+      }
+    },
+    "replicated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of when the replication was completed"
+    }
+  },
+  "additionalProperties": false
+}
