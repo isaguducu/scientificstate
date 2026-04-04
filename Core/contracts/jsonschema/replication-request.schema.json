@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "replication-request.schema.json",
+  "title": "ReplicationRequest",
+  "description": "Request for independent institutional replication of a scientific claim (Main_Source §9A.5 M3-G).",
+  "type": "object",
+  "required": ["claim_id", "source_institution_id", "target_institution_id", "method_id"],
+  "properties": {
+    "claim_id": {
+      "type": "string",
+      "description": "Identifier of the claim to be replicated"
+    },
+    "source_institution_id": {
+      "type": "string",
+      "description": "Institution that produced the original claim"
+    },
+    "target_institution_id": {
+      "type": "string",
+      "description": "Institution performing the independent replication"
+    },
+    "dataset_ref": {
+      "type": "string",
+      "description": "Reference to the dataset used for replication"
+    },
+    "method_id": {
+      "type": "string",
+      "description": "Method identifier for the replication run"
+    },
+    "compute_class": {
+      "type": "string",
+      "enum": ["classical", "quantum_sim", "quantum_hw", "hybrid"],
+      "description": "Compute class for the replication run"
+    },
+    "tolerance": {
+      "type": "object",
+      "description": "Acceptable tolerance for result comparison",
+      "properties": {
+        "absolute": {
+          "type": "number",
+          "description": "Absolute tolerance threshold"
+        },
+        "relative": {
+          "type": "number",
+          "description": "Relative tolerance threshold (fraction)"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

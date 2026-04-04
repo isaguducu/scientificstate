@@ -1,15 +1,18 @@
 """
-Claim Gate Evaluator — E1 / U1 / V1 / C1 / H1 gate calculations.
+Claim Gate Evaluator — E1 / U1 / V1 / C1 / H1 / QB / QM / REP gate calculations.
 
 Source of truth: SCIENTIFIC_UI_COCKPIT_BLUEPRINT.md §5.1 + §5.2
                  Core/contracts/jsonschema/claim-lifecycle.schema.json
 
 Gate semantics:
-  Gate-E1: Claim has at least 1 traceable evidence path (min_traceable_evidence_paths ≥ 1)
-  Gate-U1: Uncertainty must be present for Under Review → Provisionally Supported
-  Gate-V1: Validity scope must be declared for Provisionally Supported → Endorsable
-  Gate-C1: No unresolved critical contradictions for Endorsable → Endorsed (max=0)
-  Gate-H1: Signed endorsement record required for Endorsed status
+  Gate-E1:  Claim has at least 1 traceable evidence path (min_traceable_evidence_paths ≥ 1)
+  Gate-U1:  Uncertainty must be present for Under Review → Provisionally Supported
+  Gate-V1:  Validity scope must be declared for Provisionally Supported → Endorsable
+  Gate-C1:  No unresolved critical contradictions for Endorsable → Endorsed (max=0)
+  Gate-H1:  Signed endorsement record required for Endorsed status
+  Gate-QB:  Quantum claims must have a classical baseline reference (M3)
+  Gate-QM:  Quantum claims must include quantum_metadata for provenance
+  Gate-REP: Quantum_hw/hybrid claims require confirmed institutional replication (M3-G §9A.5)
 
 Constitutional rule: Scientific authority resides with the human researcher.
   Gate-H1 is therefore the only gate that CANNOT be computed automatically —
@@ -33,7 +36,10 @@ class GateResult:
     gate_v1: validity scope gate result
     gate_c1: contradiction gate result
     gate_h1: human endorsement gate result
-    failures: list of gate names that failed (e.g. ["E1", "H1"])
+    gate_qb: quantum baseline gate (True if non-quantum or baseline present)
+    gate_qm: quantum metadata gate (True if non-quantum or metadata present)
+    gate_rep: replication gate (True if non-quantum_hw/hybrid or confirmed replication present)
+    failures: list of gate names that failed (e.g. ["E1", "H1", "QB", "REP"])
     """
 
     passed: bool
@@ -42,6 +48,9 @@ class GateResult:
     gate_v1: bool
     gate_c1: bool
     gate_h1: bool
+    gate_qb: bool = True
+    gate_qm: bool = True
+    gate_rep: bool = True
     failures: list[str] = field(default_factory=list)
 
 
@@ -156,6 +165,74 @@ def gate_h1(claim: dict) -> bool:
     return bool(record.get("endorser_id")) and bool(record.get("signature"))
 
 
+# ── Quantum-specific gate rules (Main_Source §9A.3, §M3) ─────────────────────
+
+_QUANTUM_COMPUTE_CLASSES = {"quantum_sim", "quantum_hw", "hybrid"}
+
+
+def is_quantum_claim(claim: dict) -> bool:
+    """Check if a claim originates from a quantum or hybrid computation."""
+    cc = claim.get("compute_class", "")
+    if cc in _QUANTUM_COMPUTE_CLASSES:
+        return True
+    # Check nested provenance
+    p = claim.get("p") or claim.get("provenance") or {}
+    ew = p.get("execution_witness") or {}
+    return ew.get("compute_class", "") in _QUANTUM_COMPUTE_CLASSES
+
+
+def gate_quantum_baseline(claim: dict) -> bool:
+    """Quantum claims MUST have a classical baseline reference (M3 hard rule).
+
+    Without a classical baseline, quantum results cannot be compared or
+    validated. This gate returns True for non-quantum claims (not applicable).
+
+    The classical_baseline_ref field must contain a reference to a classical
+    SSV that covers the same method and dataset.
+    """
+    if not is_quantum_claim(claim):
+        return True  # Not applicable to non-quantum claims
+    ref = claim.get("classical_baseline_ref") or claim.get("classical_baseline_ssv_id")
+    return bool(ref)
+
+
+def gate_quantum_metadata(claim: dict) -> bool:
+    """Quantum claims MUST include quantum_metadata for provenance.
+
+    Required fields: at least shots and one of backend_name/simulator/provider.
+    Returns True for non-quantum claims (not applicable).
+    """
+    if not is_quantum_claim(claim):
+        return True  # Not applicable to non-quantum claims
+    qm = claim.get("quantum_metadata")
+    if not qm:
+        # Check nested in provenance
+        p = claim.get("p") or claim.get("provenance") or {}
+        qm = p.get("quantum_metadata")
+    if not isinstance(qm, dict):
+        return False
+    has_shots = "shots" in qm
+    has_backend = bool(
+        qm.get("backend_name") or qm.get("simulator") or qm.get("provider")
+    )
+    return has_shots and has_backend
+
+
+def gate_replication(claim: dict) -> bool:
+    """Gate-REP: Quantum/hybrid claims require confirmed institutional replication.
+
+    Main_Source §9A.5 M3-G: quantum_hw and hybrid claims must have at least
+    one confirmed independent replication before endorsement.
+    Classical and quantum_sim claims pass automatically.
+    """
+    compute_class = claim.get("compute_class", "classical")
+    if compute_class not in ("quantum_hw", "hybrid"):
+        return True
+    replications = claim.get("replications", [])
+    confirmed = [r for r in replications if r.get("status") == "confirmed"]
+    return len(confirmed) >= 1
+
+
 def evaluate_all(claim: dict) -> GateResult:
     """Evaluate all gates for a claim and return an aggregate GateResult.
 
@@ -163,21 +240,31 @@ def evaluate_all(claim: dict) -> GateResult:
         claim: plain dict representation of a claim (from DB, daemon, or test).
 
     Returns:
-        GateResult with passed=True only when all 5 gates pass.
+        GateResult with passed=True only when all gates pass.
 
     Note: In practice, not all gates are applicable to every state transition.
     The daemon applies gate checks selectively per transition. This function
     evaluates all gates and is used for full compliance audits and reporting.
+
+    Quantum-specific gates (QB, QM) are evaluated for all claims but only
+    fail for quantum/hybrid compute classes. Non-quantum claims pass these
+    gates automatically.
     """
     e1 = gate_e1(claim)
     u1 = gate_u1(claim)
     v1 = gate_v1(claim)
     c1 = gate_c1(claim)
     h1 = gate_h1(claim)
+    qb = gate_quantum_baseline(claim)
+    qm = gate_quantum_metadata(claim)
+    rep = gate_replication(claim)
 
     failures = [
         name
-        for name, result in (("E1", e1), ("U1", u1), ("V1", v1), ("C1", c1), ("H1", h1))
+        for name, result in (
+            ("E1", e1), ("U1", u1), ("V1", v1), ("C1", c1), ("H1", h1),
+            ("QB", qb), ("QM", qm), ("REP", rep),
+        )
         if not result
     ]
 
@@ -188,5 +275,8 @@ def evaluate_all(claim: dict) -> GateResult:
         gate_v1=v1,
         gate_c1=c1,
         gate_h1=h1,
+        gate_qb=qb,
+        gate_qm=qm,
+        gate_rep=rep,
         failures=failures,
     )

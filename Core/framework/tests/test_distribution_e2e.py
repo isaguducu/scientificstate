@@ -66,6 +66,7 @@ def test_e2e_verify_signed_manifest():
 def test_e2e_install_signed_module():
     with tempfile.TemporaryDirectory() as tmp:
         mgr = ModuleManager(modules_dir=Path(tmp) / "modules")
+        mgr.set_sigstore_required(False)  # E2E tests predate M3 Sigstore
         package = b"polymer module v1.0.0"
         manifest_bytes, pub = _build_signed_manifest("polymer_science", "1.0.0", package)
         result = mgr.install(manifest_bytes, package, pub)
@@ -78,6 +79,7 @@ def test_e2e_install_signed_module():
 def test_e2e_list_installed_after_install():
     with tempfile.TemporaryDirectory() as tmp:
         mgr = ModuleManager(modules_dir=Path(tmp) / "modules")
+        mgr.set_sigstore_required(False)  # E2E tests predate M3 Sigstore
         package = b"polymer module content"
         manifest_bytes, pub = _build_signed_manifest("polymer_science", "1.0.0", package)
         mgr.install(manifest_bytes, package, pub)
@@ -93,6 +95,7 @@ def test_e2e_registry_download_then_install():
     """Full flow: registry client returns manifest → install → visible in list."""
     with tempfile.TemporaryDirectory() as tmp:
         mgr = ModuleManager(modules_dir=Path(tmp) / "modules")
+        mgr.set_sigstore_required(False)  # E2E tests predate M3 Sigstore
         package = b"downloaded module content"
         manifest_bytes, pub = _build_signed_manifest("climate", "0.3.0", package)
         manifest_dict = json.loads(manifest_bytes)
@@ -129,6 +132,7 @@ def test_e2e_registry_download_then_install():
 def test_e2e_unsigned_manifest_rejected_at_install():
     with tempfile.TemporaryDirectory() as tmp:
         mgr = ModuleManager(modules_dir=Path(tmp) / "modules")
+        mgr.set_sigstore_required(False)  # E2E tests predate M3 Sigstore
         package = b"unsigned module"
         _, pub = generate_keypair()
 

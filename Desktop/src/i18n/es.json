@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "dashboard": "Panel",
+    "modules": "Módulos",
+    "compute": "Cálculo",
+    "settings": "Configuración"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "recent_runs": "Ejecuciones recientes",
+    "installed_modules": "Módulos instalados",
+    "no_runs": "Aún no se han realizado cálculos."
+  },
+  "modules": {
+    "title": "Tienda de módulos",
+    "search": "Buscar módulos...",
+    "install": "Instalar",
+    "uninstall": "Desinstalar",
+    "installed": "Instalado",
+    "available": "Disponible"
+  },
+  "status": {
+    "online": "En línea",
+    "offline": "Sin conexión",
+    "pending": "Pendiente",
+    "succeeded": "Exitoso",
+    "failed": "Fallido"
+  }
+}

@@ -34,8 +34,42 @@ tags:
     description: Workspace management
   - name: modules
     description: Module trust chain — install, list, revocation (Phase1-B)
+  - name: export
+    description: Standards-compliant scientific data export (Phase3 W3)
+  - name: replication
+    description: Institutional replication of scientific claims (Phase4 W1 — Main_Source §9A.5 M3-G)
+  - name: discovery
+    description: Discovery sync — push endorsed claims to portal (Phase5 W2)
 
 paths:
+  /discovery/sync:
+    post:
+      operationId: syncEndorsedClaim
+      tags: [discovery]
+      summary: Push endorsed claim to portal for global discovery
+      description: |
+        The daemon does NOT store global discovery data.
+        This endpoint validates the payload and forwards it to the portal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EndorsedClaimSync"
+      responses:
+        "200":
+          description: Claim accepted for sync
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "accepted" }
+                  claim_id: { type: string }
+                  message: { type: string }
+        "422":
+          description: Validation error
+
   /health:
     get:
       operationId: getHealth
@@ -497,9 +531,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ModuleEntry"
+                $ref: "#/components/schemas/SuggestResponse"
 
   /modules/package:
     post:
@@ -591,6 +623,292 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Export endpoints (Phase3 W3 — Standards & Interoperability) ──────
+
+  /export/rocrate/{run_id}:
+    get:
+      operationId: exportRoCrate
+      tags: [export]
+      summary: Export RO-Crate v2 metadata JSON
+      description: |
+        Returns an RO-Crate v2 metadata document (JSON-LD) for the given run.
+        Maps SSV components to schema.org entities with W3C PROV annotations.
+        Quantum provenance (shots, backend, circuit_depth) included when applicable.
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: RO-Crate v2 metadata (JSON-LD)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoCrateMetadata"
+        "404":
+          description: Run or SSV not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /export/prov/{run_id}:
+    get:
+      operationId: exportProv
+      tags: [export]
+      summary: Export W3C PROV-JSON
+      description: |
+        Returns a W3C PROV-JSON document for the given run.
+        PROV-DM model: Entity (data), Activity (run), Agent (researcher/module).
+        Quantum runs typed as ss:QuantumComputeRun.
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: W3C PROV-JSON document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProvDocument"
+        "404":
+          description: Run or SSV not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /export/openlineage/{run_id}:
+    get:
+      operationId: exportOpenLineage
+      tags: [export]
+      summary: Export OpenLineage RunEvent
+      description: Returns an OpenLineage RunEvent JSON document for the given run.
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OpenLineage RunEvent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenLineageRunEvent"
+        "404":
+          description: Run or SSV not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /export/cwl/{run_id}:
+    get:
+      operationId: exportCwl
+      tags: [export]
+      summary: Export CWL Workflow YAML
+      description: Returns a CWL v1.2 Workflow YAML document for the given run.
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: CWL Workflow YAML
+          content:
+            application/x-yaml:
+              schema:
+                type: string
+        "404":
+          description: Run or SSV not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /export/parquet/{run_id}:
+    get:
+      operationId: exportParquet
+      tags: [export]
+      summary: Export Parquet file
+      description: Returns a Parquet file containing the run's result data.
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Parquet file download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Run or SSV not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: pyarrow not installed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /export/zarr/{run_id}:
+    get:
+      operationId: exportZarr
+      tags: [export]
+      summary: Export Zarr archive
+      description: Returns a zipped Zarr archive containing the run's result data.
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Zarr archive download (ZIP)
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Run or SSV not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: zarr not installed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Replication endpoints (Phase4 W1 — Institutional Replication) ──────
+
+  /replication/request:
+    post:
+      operationId: createReplicationRequest
+      tags: [replication]
+      summary: Create a replication request for a claim
+      description: |
+        Creates a request for an independent institution to replicate a scientific claim.
+        Main_Source §9A.5 M3-G: Quantum/hybrid claims require at least one confirmed
+        institutional replication before endorsement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplicationRequest"
+      responses:
+        "200":
+          description: Replication request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplicationRequestStatus"
+
+  /replication/status/{request_id}:
+    get:
+      operationId: getReplicationStatus
+      tags: [replication]
+      summary: Get replication request status
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Replication request status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplicationRequestStatus"
+        "404":
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /replication/submit-result:
+    post:
+      operationId: submitReplicationResult
+      tags: [replication]
+      summary: Submit a replication result with target SSV
+      description: |
+        Submits the result of an independent replication run. The daemon compares
+        the target SSV against the source SSV and produces a comparison report.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request_id, target_ssv_id]
+              properties:
+                request_id:
+                  type: string
+                target_ssv_id:
+                  type: string
+                target_ssv:
+                  type: object
+                  description: Optional SSV dict for comparison
+      responses:
+        "200":
+          description: Replication result with comparison report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplicationResult"
+        "404":
+          description: Request or SSV not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /replication/history/{claim_id}:
+    get:
+      operationId: getReplicationHistory
+      tags: [replication]
+      summary: Get replication history for a claim
+      parameters:
+        - name: claim_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of replication requests for the claim
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReplicationRequestStatus"
 
 components:
   schemas:
@@ -842,6 +1160,15 @@ components:
           description: Absolute path to the installed module directory
 
     ModuleInstallRequest:
+      oneOf:
+        - $ref: "#/components/schemas/ModuleInstallBundle"
+        - $ref: "#/components/schemas/ModuleInstallRegistry"
+      description: |
+        Two install modes:
+        - Bundle install: full manifest + package + public key (base64-encoded)
+        - Registry install: module_id + version — daemon fetches from registry
+
+    ModuleInstallBundle:
       type: object
       required: [manifest_b64, package_b64, public_key_b64]
       properties:
@@ -854,6 +1181,17 @@ components:
         public_key_b64:
           type: string
           description: Base64-encoded DER Ed25519 public key
+
+    ModuleInstallRegistry:
+      type: object
+      required: [module_id, version]
+      properties:
+        module_id:
+          type: string
+          description: Domain module identifier (e.g. "polymer_science")
+        version:
+          type: string
+          description: SemVer version to install from registry
 
     ModuleInstallResult:
       type: object
@@ -880,6 +1218,20 @@ components:
           type: boolean
           description: Always true — SSV/claim data is never deleted (P9)
 
+    SuggestResponse:
+      type: object
+      required: [suggested_domains, confidence]
+      properties:
+        suggested_domains:
+          type: array
+          items:
+            type: string
+          description: Domain IDs matching the file extension
+        confidence:
+          type: string
+          enum: [high, medium, low]
+          description: "high=1 match, medium=>1 match, low=0 matches"
+
     ErrorResponse:
       type: object
       required: [error, message]
@@ -890,3 +1242,189 @@ components:
           type: string
         detail:
           type: object
+
+    # ── Export schemas (Phase3 W3) ──────────────────────────────────────
+
+    RoCrateMetadata:
+      type: object
+      required: ["@context", "@graph"]
+      properties:
+        "@context":
+          type: string
+          description: JSON-LD context (RO-Crate 1.2-DRAFT)
+        "@graph":
+          type: array
+          items:
+            type: object
+          description: JSON-LD graph entities (Dataset, SoftwareApplication, CreateAction, PropertyValue)
+
+    ProvDocument:
+      type: object
+      required: [prefix, entity, activity]
+      properties:
+        prefix:
+          type: object
+          description: PROV namespace prefixes
+        entity:
+          type: object
+          description: PROV entities (data, result, SSV)
+        activity:
+          type: object
+          description: PROV activities (compute runs)
+        agent:
+          type: object
+          description: PROV agents (researcher, module)
+        wasGeneratedBy:
+          type: object
+        used:
+          type: object
+        wasAttributedTo:
+          type: object
+
+    OpenLineageRunEvent:
+      type: object
+      required: [eventType, eventTime, producer, run, job]
+      properties:
+        eventType:
+          type: string
+          enum: [START, RUNNING, COMPLETE, FAIL, ABORT]
+        eventTime:
+          type: string
+          format: date-time
+        producer:
+          type: string
+        schemaURL:
+          type: string
+        run:
+          type: object
+          required: [runId]
+          properties:
+            runId:
+              type: string
+            facets:
+              type: object
+        job:
+          type: object
+          required: [namespace, name]
+          properties:
+            namespace:
+              type: string
+            name:
+              type: string
+            facets:
+              type: object
+        inputs:
+          type: array
+          items:
+            type: object
+        outputs:
+          type: array
+          items:
+            type: object
+
+    # ── Replication schemas (Phase4 W1) ──────────────────────────────
+
+    ReplicationRequest:
+      type: object
+      required: [claim_id, source_institution_id, target_institution_id, method_id]
+      properties:
+        claim_id:
+          type: string
+        source_institution_id:
+          type: string
+        target_institution_id:
+          type: string
+        method_id:
+          type: string
+        dataset_ref:
+          type: string
+        compute_class:
+          type: string
+          enum: [classical, quantum_sim, quantum_hw, hybrid]
+        tolerance:
+          type: object
+          properties:
+            absolute:
+              type: number
+            relative:
+              type: number
+
+    ReplicationRequestStatus:
+      type: object
+      required: [request_id, claim_id, status]
+      properties:
+        request_id:
+          type: string
+        claim_id:
+          type: string
+        source_institution_id:
+          type: string
+        target_institution_id:
+          type: string
+        method_id:
+          type: string
+        status:
+          type: string
+          enum: [confirmed, partially_confirmed, not_confirmed, failed, pending]
+        created_at:
+          type: string
+          format: date-time
+
+    ReplicationResult:
+      type: object
+      required: [request_id, status, source_ssv_id, target_ssv_id]
+      properties:
+        request_id:
+          type: string
+        status:
+          type: string
+          enum: [confirmed, partially_confirmed, not_confirmed, failed, pending]
+        source_ssv_id:
+          type: string
+        target_ssv_id:
+          type: string
+        comparison_report:
+          type: object
+          properties:
+            result_match:
+              type: boolean
+            tolerance_used:
+              type: object
+            differences:
+              type: array
+              items:
+                type: object
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+        replicated_at:
+          type: string
+          format: date-time
+
+    EndorsedClaimSync:
+      type: object
+      required: [claim_id, ssv_id, domain_id, title, researcher_orcid, gate_status, ssv_signature, ssv_hash]
+      properties:
+        claim_id:
+          type: string
+        ssv_id:
+          type: string
+        domain_id:
+          type: string
+        method_id:
+          type: string
+        title:
+          type: string
+        institution_id:
+          type: string
+        researcher_orcid:
+          type: string
+        gate_status:
+          type: object
+        ssv_signature:
+          type: string
+          description: Ed25519 signature — portal verifies
+        ssv_hash:
+          type: string
+          description: SHA-256 integrity check

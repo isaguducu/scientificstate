@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "modules": "Modules",
+    "compute": "Calcul",
+    "settings": "Paramètres"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "recent_runs": "Exécutions récentes",
+    "installed_modules": "Modules installés",
+    "no_runs": "Aucun calcul effectué pour l'instant."
+  },
+  "modules": {
+    "title": "Magasin de modules",
+    "search": "Rechercher des modules...",
+    "install": "Installer",
+    "uninstall": "Désinstaller",
+    "installed": "Installé",
+    "available": "Disponible"
+  },
+  "status": {
+    "online": "En ligne",
+    "offline": "Hors ligne",
+    "pending": "En attente",
+    "succeeded": "Réussi",
+    "failed": "Échoué"
+  }
+}

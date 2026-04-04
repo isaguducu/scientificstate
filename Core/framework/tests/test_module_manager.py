@@ -33,7 +33,10 @@ def _make_manifest(domain_id="test_domain", version="0.1.0", include_sig=True) -
 
 def _manager(tmp_dir: Path):
     from scientificstate.modules.manager import ModuleManager
-    return ModuleManager(modules_dir=tmp_dir / "modules")
+    mgr = ModuleManager(modules_dir=tmp_dir / "modules")
+    # These tests predate M3 Sigstore enforcement — disable for P1 Ed25519 tests.
+    mgr.set_sigstore_required(False)
+    return mgr
 
 
 # ── Install ────────────────────────────────────────────────────────────────────

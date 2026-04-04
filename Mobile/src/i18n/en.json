@@ -1,0 +1,49 @@
+{
+  "nav": {
+    "discover": "Discover",
+    "search": "Search",
+    "collections": "Collections",
+    "settings": "Settings"
+  },
+  "discover": {
+    "title": "Discover",
+    "feed": "Your Feed",
+    "endorsed": "Endorsed Claims",
+    "searchPlaceholder": "Search claims, researchers, domains...",
+    "noResults": "No results found.",
+    "loadMore": "Load more",
+    "emptyFeed": "Subscribe to domains to see endorsed claims in your feed."
+  },
+  "claim": {
+    "detail": "Claim Detail",
+    "ssv": "SSV",
+    "gates": "Gate Results",
+    "citations": "Citation Chain",
+    "impactScore": "Impact Score",
+    "endorsedBy": "Endorsed by",
+    "replicatedBy": "Replicated by",
+    "domain": "Domain",
+    "method": "Method"
+  },
+  "profile": {
+    "title": "Researcher Profile",
+    "endorsedClaims": "Endorsed Claims",
+    "impactStats": "Impact Statistics"
+  },
+  "settings": {
+    "language": "Language",
+    "pushNotifications": "Push Notifications",
+    "pushHint": "Receive notifications for new endorsed claims in your subscribed fields.",
+    "subscriptions": "Field Subscriptions"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signOut": "Sign Out"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "offline": "You are offline"
+  }
+}

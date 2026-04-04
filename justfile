@@ -84,3 +84,97 @@ phase1-smoke:
     @echo "=== desktop ==="
     cd Desktop && npm run typecheck && npm run build
     @echo "✅ Phase 1 smoke PASS"
+
+# ── Phase 2 smoke — Phase 1 + lint gates + web build ─────────────────────────
+
+phase2-smoke:
+    @echo "=== contracts ==="
+    cd Core/contracts && pnpm run validate && pnpm run build
+    @echo "=== framework tests ==="
+    cd Core/framework && uv run pytest -q
+    @echo "=== framework lint ==="
+    cd Core/framework && uv run ruff check .
+    @echo "=== polymer tests ==="
+    cd Domains/polymer && uv run pytest -q
+    @echo "=== polymer lint ==="
+    cd Domains/polymer && uv run ruff check .
+    @echo "=== daemon tests ==="
+    cd Core/daemon && uv run pytest tests/ -q
+    @echo "=== daemon lint ==="
+    cd Core/daemon && uv run ruff check .
+    @echo "=== web build ==="
+    cd Web && npm run build
+    @echo "=== desktop ==="
+    cd Desktop && npm run typecheck && npm run build
+    @echo "✅ Phase 2 smoke PASS"
+
+# ── Phase 3 smoke — Phase 2 + sandbox + standards + tuf + federation + i18n + diagnostics ─
+
+phase3-smoke:
+    @echo "=== contracts ==="
+    cd Core/contracts && pnpm run validate && pnpm run build
+    @echo "=== framework tests (sandbox + standards + tuf delegated dahil) ==="
+    cd Core/framework && uv run pytest -q
+    @echo "=== framework lint ==="
+    cd Core/framework && uv run ruff check .
+    @echo "=== polymer tests ==="
+    cd Domains/polymer && uv run pytest -q
+    @echo "=== polymer lint ==="
+    cd Domains/polymer && uv run ruff check .
+    @echo "=== daemon tests (export + registry + diagnostics routes dahil) ==="
+    cd Core/daemon && uv run pytest tests/ -q
+    @echo "=== daemon lint ==="
+    cd Core/daemon && uv run ruff check .
+    @echo "=== web build (federation + SSO pages dahil) ==="
+    cd Web && npm run build
+    @echo "=== desktop (i18n dahil) ==="
+    cd Desktop && npm run typecheck && npm run build
+    @echo "✅ Phase 3 smoke PASS"
+
+# ── Phase 4 smoke — Phase 3 + table alignment + monitoring + security audit ───
+
+phase4-smoke:
+    @echo "=== contracts ==="
+    cd Core/contracts && pnpm run validate && pnpm run build
+    @echo "=== framework tests ==="
+    cd Core/framework && uv run pytest -q
+    @echo "=== framework lint ==="
+    cd Core/framework && uv run ruff check .
+    @echo "=== polymer tests ==="
+    cd Domains/polymer && uv run pytest -q
+    @echo "=== polymer lint ==="
+    cd Domains/polymer && uv run ruff check .
+    @echo "=== daemon tests (table alignment + monitoring dahil) ==="
+    cd Core/daemon && uv run pytest tests/ -q
+    @echo "=== daemon lint ==="
+    cd Core/daemon && uv run ruff check .
+    @echo "=== web build ==="
+    cd Web && npm run build
+    @echo "=== desktop ==="
+    cd Desktop && npm run typecheck && npm run build
+    @echo "✅ Phase 4 smoke PASS"
+
+# ── Phase 5 smoke — Phase 4 + alerting + materials + shared-ui ────────────────
+
+phase5-smoke:
+    @echo "=== contracts ==="
+    cd Core/contracts && pnpm run validate && pnpm run build
+    @echo "=== framework tests ==="
+    cd Core/framework && uv run pytest -q
+    @echo "=== framework lint ==="
+    cd Core/framework && uv run ruff check .
+    @echo "=== polymer tests ==="
+    cd Domains/polymer && uv run pytest -q
+    @echo "=== materials tests ==="
+    cd Domains/materials && uv run pytest -q
+    @echo "=== daemon tests (alerting + monitoring dahil) ==="
+    cd Core/daemon && uv run pytest tests/ -q
+    @echo "=== daemon lint ==="
+    cd Core/daemon && uv run ruff check .
+    @echo "=== web build ==="
+    cd Web && npm run build
+    @echo "=== desktop (analytics dahil) ==="
+    cd Desktop && npm run typecheck && npm run build
+    @echo "=== shared ui ==="
+    cd Core/ui && npm run build
+    @echo "✅ Phase 5 smoke PASS"

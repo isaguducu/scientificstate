@@ -1,0 +1,49 @@
+{
+  "nav": {
+    "discover": "Decouvrir",
+    "search": "Rechercher",
+    "collections": "Collections",
+    "settings": "Parametres"
+  },
+  "discover": {
+    "title": "Decouvrir",
+    "feed": "Votre flux",
+    "endorsed": "Endorsed Claims",
+    "searchPlaceholder": "Rechercher claims, chercheurs, domaines...",
+    "noResults": "Aucun resultat trouve.",
+    "loadMore": "Charger plus",
+    "emptyFeed": "Abonnez-vous a des domaines pour voir les Endorsed Claims dans votre flux."
+  },
+  "claim": {
+    "detail": "Detail du Claim",
+    "ssv": "SSV",
+    "gates": "Resultats des Gates",
+    "citations": "Citation Chain",
+    "impactScore": "Impact Score",
+    "endorsedBy": "Endorsed par",
+    "replicatedBy": "Replique par",
+    "domain": "Domaine",
+    "method": "Methode"
+  },
+  "profile": {
+    "title": "Profil du chercheur",
+    "endorsedClaims": "Endorsed Claims",
+    "impactStats": "Statistiques d'impact"
+  },
+  "settings": {
+    "language": "Langue",
+    "pushNotifications": "Notifications",
+    "pushHint": "Recevez des notifications pour les nouveaux Endorsed Claims dans vos domaines abonnes.",
+    "subscriptions": "Abonnements de domaine"
+  },
+  "auth": {
+    "signIn": "Connexion",
+    "signOut": "Deconnexion"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "retry": "Reessayer",
+    "offline": "Vous etes hors ligne"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "domain_id": "biology",
+  "display_name": "Biology",
+  "version": "0.1.0",
+  "description": "Biology domain plugin for ScientificState",
+  "methods": [
+    {
+      "method_id": "pcr_amplification",
+      "display_name": "PCR Amplification",
+      "description": "Polymerase Chain Reaction amplification analysis"
+    },
+    {
+      "method_id": "gel_electrophoresis",
+      "display_name": "Gel Electrophoresis",
+      "description": "Agarose/polyacrylamide gel electrophoresis band analysis"
+    },
+    {
+      "method_id": "cell_viability",
+      "display_name": "Cell Viability Assay",
+      "description": "MTT/MTS cell viability and proliferation assay"
+    }
+  ],
+  "dependencies": ["numpy", "scipy"]
+}

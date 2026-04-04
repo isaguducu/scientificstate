@@ -1,0 +1,29 @@
+{
+  "nav": {
+    "dashboard": "ダッシュボード",
+    "modules": "モジュール",
+    "compute": "計算",
+    "settings": "設定"
+  },
+  "dashboard": {
+    "title": "ダッシュボード",
+    "recent_runs": "最近の実行",
+    "installed_modules": "インストール済みモジュール",
+    "no_runs": "まだ計算の実行はありません。"
+  },
+  "modules": {
+    "title": "モジュールストア",
+    "search": "モジュールを検索...",
+    "install": "インストール",
+    "uninstall": "アンインストール",
+    "installed": "インストール済み",
+    "available": "利用可能"
+  },
+  "status": {
+    "online": "オンライン",
+    "offline": "オフライン",
+    "pending": "保留中",
+    "succeeded": "成功",
+    "failed": "失敗"
+  }
+}

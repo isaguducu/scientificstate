@@ -69,6 +69,7 @@ class ComputeRunRequest(BaseModel):
     dataset_ref: str | None = Field(default=None)
     assumptions: list[dict[str, Any]] = Field(default_factory=list)
     parameters: dict[str, Any] = Field(default_factory=dict)
+    compute_class: str = Field(default="classical")
 
 
 class RunAccepted(BaseModel):
@@ -76,7 +77,7 @@ class RunAccepted(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# DB helpers (runs + ssv_records + claim_records)
+# DB helpers (runs + ssvs + claims)
 # ---------------------------------------------------------------------------
 
 
@@ -95,7 +96,7 @@ async def _insert_run(
 ) -> None:
     await db.execute(
         """
-        INSERT INTO compute_runs
+        INSERT INTO runs
             (run_id, workspace_id, domain_id, method_id, status,
              started_at, finished_at, ssv_id, result_json, error_json)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -118,7 +119,7 @@ async def _update_run_status(
 ) -> None:
     await db.execute(
         """
-        UPDATE compute_runs
+        UPDATE runs
         SET status=?, finished_at=?, ssv_id=?, result_json=?, error_json=?
         WHERE run_id=?
         """,
@@ -130,7 +131,7 @@ async def _load_run(run_id: str) -> dict[str, Any] | None:
     async with aiosqlite.connect(get_db_path()) as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute(
-            "SELECT * FROM compute_runs WHERE run_id = ?", (run_id,)
+            "SELECT * FROM runs WHERE run_id = ?", (run_id,)
         )
         row = await cur.fetchone()
         return dict(row) if row else None
@@ -186,22 +187,32 @@ async def create_run(body: ComputeRunRequest, request: Request) -> Any:
         )
         await db.commit()
 
-    # Determine compute class (classical or quantum_sim)
-    compute_class = body.parameters.get("compute_class", "classical")
-    if compute_class == "quantum_sim":
-        from src.runner.backends.quantum_sim import QuantumSimBackend
-        backend = QuantumSimBackend()
+    # Determine compute class and dispatch to appropriate backend
+    compute_class = body.compute_class
+    if compute_class in ("quantum_sim", "quantum_hw", "hybrid"):
+        if compute_class == "quantum_sim":
+            from src.runner.backends.quantum_sim import QuantumSimBackend
+            backend = QuantumSimBackend()
+        elif compute_class == "quantum_hw":
+            from src.runner.backends.quantum_hw import QuantumHWBackend
+            backend = QuantumHWBackend()
+        else:  # hybrid
+            from src.runner.backends.hybrid import HybridBackend
+            backend = HybridBackend(domain_registry=registry)
+
         # Execute via backend directly, then feed result to pipeline
+        # Inject domain_id so ClassicalBackend can find the domain in registry
+        backend_params = {**body.parameters, "domain_id": body.domain_id}
         backend_result = backend.execute(
             method_id=body.method_id,
             dataset_ref=body.dataset_ref or "",
             assumptions=body.assumptions,
-            params=body.parameters,
+            params=backend_params,
         )
         # Inject backend result into domain for pipeline consumption
         # The pipeline will pick up quantum_metadata and exploratory flags
         body.parameters["_backend_result"] = backend_result
-        body.parameters["_compute_class"] = "quantum_sim"
+        body.parameters["_compute_class"] = compute_class
 
     # Execute pipeline (W3)
     if not _PIPELINE_AVAILABLE:
@@ -222,6 +233,7 @@ async def create_run(body: ComputeRunRequest, request: Request) -> Any:
             assumptions=body.assumptions,
             dataset_ref=body.dataset_ref,
             workspace_id=body.workspace_id,
+            parameters=body.parameters,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("Pipeline execution failed: %s", exc)
@@ -244,11 +256,11 @@ async def create_run(body: ComputeRunRequest, request: Request) -> Any:
 
     async with aiosqlite.connect(get_db_path()) as db:
         await db.execute(
-            "INSERT INTO ssv_records (ssv_id, run_id, ssv_json) VALUES (?, ?, ?)",
+            "INSERT INTO ssvs (ssv_id, run_id, ssv_json) VALUES (?, ?, ?)",
             (ssv_id, run_id, json.dumps(pr.ssv)),
         )
         await db.execute(
-            "INSERT INTO claim_records (claim_id, run_id, claim_json) VALUES (?, ?, ?)",
+            "INSERT INTO claims (claim_id, run_id, claim_json) VALUES (?, ?, ?)",
             (claim_id, run_id, json.dumps(pr.claim)),
         )
         await _update_run_status(

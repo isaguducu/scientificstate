@@ -10,6 +10,8 @@ requires-python = ">=3.11"
 dependencies = ["pydantic>=2.0", "cryptography>=42.0"]
 
 [project.optional-dependencies]
+sigstore = ["sigstore>=3.0"]
+standards = ["pyarrow>=14.0", "zarr>=2.16", "pyyaml>=6.0"]
 dev = ["pytest>=7.0", "pytest-cov", "ruff>=0.4.0"]
 
 [tool.hatch.build.targets.wheel]

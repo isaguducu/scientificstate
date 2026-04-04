@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scientificstate.org/schemas/rocrate-profile.schema.json",
+  "title": "ScientificState RO-Crate v2 Profile",
+  "description": "JSON Schema for validating ScientificState RO-Crate v2 metadata documents. An RO-Crate metadata document is a JSON-LD @graph containing Dataset, SoftwareApplication, CreateAction, and PropertyValue entities mapped from an SSV (Scientific State Vector).",
+  "type": "object",
+  "required": ["@context", "@graph"],
+  "properties": {
+    "@context": {
+      "description": "JSON-LD context — must reference the RO-Crate 1.2-DRAFT context.",
+      "type": "string",
+      "const": "https://w3id.org/ro/crate/1.2-DRAFT/context"
+    },
+    "@graph": {
+      "description": "JSON-LD graph containing all RO-Crate entities.",
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/GraphEntity"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "GraphEntity": {
+      "description": "A single entity in the RO-Crate @graph.",
+      "type": "object",
+      "required": ["@type", "@id"],
+      "properties": {
+        "@type": {
+          "description": "Schema.org or custom type.",
+          "type": "string"
+        },
+        "@id": {
+          "description": "Entity identifier (URI or fragment).",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "datePublished": {
+          "type": "string"
+        },
+        "conformsTo": {
+          "description": "RO-Crate conformance reference.",
+          "type": "object",
+          "properties": {
+            "@id": { "type": "string" }
+          }
+        },
+        "about": {
+          "type": "object",
+          "properties": {
+            "@id": { "type": "string" }
+          }
+        },
+        "hasPart": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "@id": { "type": "string" }
+            }
+          }
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "propertyID": {
+          "type": "string"
+        },
+        "value": {},
+        "softwareVersion": {
+          "type": "string"
+        },
+        "instrument": {
+          "type": "object",
+          "properties": {
+            "@id": { "type": "string" }
+          }
+        },
+        "object": {
+          "type": "object",
+          "properties": {
+            "@id": { "type": "string" }
+          }
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "@id": { "type": "string" }
+          }
+        },
+        "startTime": {
+          "type": "string"
+        },
+        "endTime": {
+          "type": "string"
+        },
+        "additionalProperty": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PropertyValue"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "PropertyValue": {
+      "description": "A schema.org PropertyValue.",
+      "type": "object",
+      "required": ["@type", "name"],
+      "properties": {
+        "@type": {
+          "type": "string",
+          "const": "PropertyValue"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {}
+      },
+      "additionalProperties": true
+    }
+  }
+}

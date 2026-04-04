@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "materials-science"
+version = "0.1.0"
+description = "Materials characterization domain module for ScientificState"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "scientificstate-framework",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.uv.sources]
+scientificstate-framework = { path = "../../Core/framework", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["materials_science"]
+
+[project.entry-points."scientificstate.domains"]
+materials_science = "materials_science.domain_manifest:MaterialsScienceDomain"

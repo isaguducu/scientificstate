@@ -30,6 +30,11 @@
     "parameters": {
       "type": "object",
       "description": "Method-specific parameters — validated against domain MethodManifest.parameters_schema"
+    },
+    "compute_class": {
+      "type": "string",
+      "enum": ["classical", "quantum_sim", "quantum_hw", "hybrid"],
+      "description": "Optional compute class hint — defaults to classical if omitted"
     }
   },
   "additionalProperties": false

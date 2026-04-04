@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "domain-manifest.schema.json",
+  "title": "DomainManifest",
+  "description": "Domain plugin registration contract — all domain plugins must conform to this schema",
+  "type": "object",
+  "required": ["domain_id", "display_name", "version", "methods"],
+  "properties": {
+    "domain_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Unique lowercase identifier for the domain (e.g. 'materials_science')"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Human-readable domain name"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "SemVer version string"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the domain's capabilities"
+    },
+    "methods": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["method_id", "display_name"],
+        "properties": {
+          "method_id": {
+            "type": "string",
+            "description": "Unique method identifier within the domain"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Human-readable method name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Brief description of the method"
+          }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Python package dependencies required by this domain"
+    }
+  }
+}

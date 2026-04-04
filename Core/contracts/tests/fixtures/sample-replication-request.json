@@ -1,0 +1,12 @@
+{
+  "claim_id": "claim-abc-123",
+  "source_institution_id": "inst-university-tokyo",
+  "target_institution_id": "inst-max-planck",
+  "method_id": "bell_state_tomography",
+  "dataset_ref": "dataset-xyz-789",
+  "compute_class": "quantum_sim",
+  "tolerance": {
+    "absolute": 0.01,
+    "relative": 0.05
+  }
+}

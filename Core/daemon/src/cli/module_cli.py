@@ -83,9 +83,17 @@ def cmd_search(args: argparse.Namespace) -> None:
 
 
 def cmd_install(args: argparse.Namespace) -> None:
-    """Install a module (placeholder — requires manifest/package/key)."""
-    print(f"Install '{args.name}': requires manifest, package, and public key.")
-    print("Use the Desktop Module Store UI for interactive installation.")
+    """Install a module from registry by domain_id."""
+    version = getattr(args, "version", "latest") or "latest"
+    result = _daemon_post("/modules/install", {
+        "module_id": args.name,
+        "version": version,
+    })
+    if result.get("success"):
+        print(f"Installed: {result.get('domain_id')}@{result.get('version')}")
+    else:
+        print(f"Install failed: {result}", file=sys.stderr)
+        sys.exit(1)
 
 
 def cmd_package(args: argparse.Namespace) -> None:
@@ -118,14 +126,39 @@ def cmd_publish(args: argparse.Namespace) -> None:
     # Step 2: Publish to portal
     portal_url = args.portal or _DEFAULT_PORTAL_URL
     print(f"Package ready. Publishing to {portal_url}...")
-    print(f"  tarball:   {tarball_path}")
-    print(f"  manifest:  {manifest_path}")
-    print(f"  hash:      {result.get('tarball_hash')}")
 
-    # Portal publish would upload the tarball + manifest
-    # For now, print instructions
-    print("\nPortal publish is not yet implemented in CLI.")
-    print("Upload the tarball and manifest manually or use the Desktop UI.")
+    # Read manifest as base64
+    with open(manifest_path, "rb") as f:
+        import base64
+        manifest_b64 = base64.b64encode(f.read()).decode()
+
+    publish_body = {
+        "manifest_b64": manifest_b64,
+        "tarball_hash": result.get("tarball_hash", ""),
+        "signature": result.get("signature", ""),
+    }
+    if getattr(args, "orcid", None):
+        publish_body["author_orcid"] = args.orcid
+
+    data = json.dumps(publish_body).encode()
+    req = urllib.request.Request(
+        portal_url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            pub_result = json.loads(resp.read())
+        print(f"Published: {pub_result.get('module_id')}@{pub_result.get('version')}")
+        if pub_result.get("registry_url"):
+            print(f"Registry:  {pub_result['registry_url']}")
+    except urllib.error.HTTPError as e:
+        resp_body = e.read().decode() if e.fp else ""
+        print(f"Publish failed — {e.code}: {resp_body}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"Cannot reach portal at {portal_url}: {e.reason}", file=sys.stderr)
+        sys.exit(1)
 
 
 def cmd_revoke(args: argparse.Namespace) -> None:
@@ -157,8 +190,9 @@ def main() -> None:
     p_search.add_argument("query", help="Search query string")
 
     # install
-    p_install = sub.add_parser("install", help="Install a module")
+    p_install = sub.add_parser("install", help="Install a module from registry")
     p_install.add_argument("name", help="Module domain_id to install")
+    p_install.add_argument("--version", default="latest", help="Version to install (default: latest)")
 
     # package
     p_package = sub.add_parser("package", help="Package a local module")
@@ -170,6 +204,7 @@ def main() -> None:
     p_publish.add_argument("path", help="Path to module directory")
     p_publish.add_argument("--key", help="Path to Ed25519 private key for signing")
     p_publish.add_argument("--portal", help=f"Portal URL (default: {_DEFAULT_PORTAL_URL})")
+    p_publish.add_argument("--orcid", help="Author ORCID identifier")
 
     # revoke
     p_revoke = sub.add_parser("revoke", help="Revoke a module version")

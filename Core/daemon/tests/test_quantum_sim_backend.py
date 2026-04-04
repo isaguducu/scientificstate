@@ -1,7 +1,5 @@
 """QuantumSimBackend tests — compute_class, mock fallback, error handling."""
 
-import pytest
-
 
 def test_quantum_sim_compute_class():
     from src.runner.backends.quantum_sim import QuantumSimBackend

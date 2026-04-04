@@ -14,6 +14,7 @@ dependencies = [
 
 [project.optional-dependencies]
 quantum = ["qiskit>=1.0", "qiskit-aer>=0.13"]
+quantum-hw = ["qiskit>=1.0", "qiskit-ibm-runtime>=0.20.0", "requests>=2.31.0"]
 
 [project.scripts]
 daemon = "src.main:start"

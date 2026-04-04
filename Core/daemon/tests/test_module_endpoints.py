@@ -68,7 +68,6 @@ async def test_install_unsigned_manifest_returns_403(client):
     manifest_bytes = json.dumps(manifest).encode()
     package_bytes = b"fake-package"
 
-    import os
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
     from cryptography.hazmat.primitives.serialization import (
         Encoding, PublicFormat

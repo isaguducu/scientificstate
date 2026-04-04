@@ -1,0 +1,49 @@
+{
+  "nav": {
+    "discover": "Descubrir",
+    "search": "Buscar",
+    "collections": "Colecciones",
+    "settings": "Configuracion"
+  },
+  "discover": {
+    "title": "Descubrir",
+    "feed": "Tu feed",
+    "endorsed": "Endorsed Claims",
+    "searchPlaceholder": "Buscar claims, investigadores, dominios...",
+    "noResults": "No se encontraron resultados.",
+    "loadMore": "Cargar mas",
+    "emptyFeed": "Suscribete a dominios para ver Endorsed Claims en tu feed."
+  },
+  "claim": {
+    "detail": "Detalle del Claim",
+    "ssv": "SSV",
+    "gates": "Resultados de Gate",
+    "citations": "Citation Chain",
+    "impactScore": "Impact Score",
+    "endorsedBy": "Endorsed por",
+    "replicatedBy": "Replicado por",
+    "domain": "Dominio",
+    "method": "Metodo"
+  },
+  "profile": {
+    "title": "Perfil del investigador",
+    "endorsedClaims": "Endorsed Claims",
+    "impactStats": "Estadisticas de impacto"
+  },
+  "settings": {
+    "language": "Idioma",
+    "pushNotifications": "Notificaciones",
+    "pushHint": "Recibe notificaciones de nuevos Endorsed Claims en tus campos suscritos.",
+    "subscriptions": "Suscripciones de campo"
+  },
+  "auth": {
+    "signIn": "Iniciar sesion",
+    "signOut": "Cerrar sesion"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Se produjo un error",
+    "retry": "Reintentar",
+    "offline": "Estas sin conexion"
+  }
+}

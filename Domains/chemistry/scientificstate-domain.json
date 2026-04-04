@@ -1,0 +1,24 @@
+{
+  "domain_id": "chemistry",
+  "display_name": "Chemistry",
+  "version": "0.1.0",
+  "description": "Chemistry domain plugin for ScientificState",
+  "methods": [
+    {
+      "method_id": "uv_vis_spectroscopy",
+      "display_name": "UV-Vis Spectroscopy",
+      "description": "UV-Visible absorption spectroscopy analysis"
+    },
+    {
+      "method_id": "titration",
+      "display_name": "Titration",
+      "description": "Acid-base or redox titration analysis"
+    },
+    {
+      "method_id": "hplc",
+      "display_name": "HPLC Chromatography",
+      "description": "High-Performance Liquid Chromatography separation analysis"
+    }
+  ],
+  "dependencies": ["numpy", "scipy"]
+}

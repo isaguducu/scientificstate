@@ -7,13 +7,13 @@
   "properties": {
     "run_id": { "type": "string" },
     "status": { "enum": ["succeeded", "failed", "pending"] },
-    "compute_class": { "const": "quantum_sim" },
+    "compute_class": { "enum": ["quantum_sim", "quantum_hw", "hybrid"] },
     "counts": { "type": "object", "additionalProperties": { "type": "integer" } },
     "statevector": { "type": "array", "items": { "type": "number" } },
     "execution_witness": {
       "type": "object",
       "properties": {
-        "compute_class": { "const": "quantum_sim" },
+        "compute_class": { "enum": ["quantum_sim", "quantum_hw", "hybrid"] },
         "backend_id": { "type": "string" },
         "quantum_metadata": {
           "type": "object",

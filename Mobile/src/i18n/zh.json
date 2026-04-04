@@ -1,0 +1,49 @@
+{
+  "nav": {
+    "discover": "发现",
+    "search": "搜索",
+    "collections": "收藏集",
+    "settings": "设置"
+  },
+  "discover": {
+    "title": "发现",
+    "feed": "您的信息流",
+    "endorsed": "Endorsed Claims",
+    "searchPlaceholder": "搜索 Claim、研究者、领域...",
+    "noResults": "未找到结果。",
+    "loadMore": "加载更多",
+    "emptyFeed": "订阅领域以在信息流中查看 Endorsed Claims。"
+  },
+  "claim": {
+    "detail": "Claim 详情",
+    "ssv": "SSV",
+    "gates": "Gate 结果",
+    "citations": "Citation Chain",
+    "impactScore": "Impact Score",
+    "endorsedBy": "Endorsed 者",
+    "replicatedBy": "复制者",
+    "domain": "领域",
+    "method": "方法"
+  },
+  "profile": {
+    "title": "研究者简介",
+    "endorsedClaims": "Endorsed Claims",
+    "impactStats": "影响统计"
+  },
+  "settings": {
+    "language": "语言",
+    "pushNotifications": "推送通知",
+    "pushHint": "接收您订阅领域中新 Endorsed Claims 的通知。",
+    "subscriptions": "领域订阅"
+  },
+  "auth": {
+    "signIn": "登录",
+    "signOut": "退出"
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "发生错误",
+    "retry": "重试",
+    "offline": "您处于离线状态"
+  }
+}

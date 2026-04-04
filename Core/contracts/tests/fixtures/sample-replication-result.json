@@ -1,0 +1,16 @@
+{
+  "request_id": "req-abc-456",
+  "status": "confirmed",
+  "source_ssv_id": "ssv-source-abc",
+  "target_ssv_id": "ssv-target-def",
+  "comparison_report": {
+    "result_match": true,
+    "tolerance_used": {
+      "absolute": 0.01,
+      "relative": 0.05
+    },
+    "differences": [],
+    "confidence": 0.98
+  },
+  "replicated_at": "2026-04-04T10:30:00Z"
+}

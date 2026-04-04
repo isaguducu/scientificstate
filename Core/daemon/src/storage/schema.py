@@ -7,6 +7,16 @@ Design principle (P1 — Immutability):
 - Provenance chain is append-only.
 
 All tables use TEXT primary keys (UUID strings) for portability.
+
+Schema alignment note (Phase 4):
+  This file defines the DAEMON's working tables (runs, ssvs, claims).
+  schema.sql defines the REFERENCE schema (with FK constraints to
+  questions, capsules, etc.).  Column naming intentionally differs:
+    - schema.py uses ``run_id`` as PK (daemon-friendly, no FK dependency)
+    - schema.sql uses ``id`` as PK with FK to questions (full relational model)
+  Both share the table names ``runs``, ``ssvs``, ``claims`` since Phase 4.
+  VIEW aliases (compute_runs, ssv_records, claim_records) preserve backward
+  compatibility with pre-Phase 4 code.
 """
 
 from __future__ import annotations
@@ -90,10 +100,10 @@ CREATE TABLE IF NOT EXISTS workspaces (
 );
 """
 
-_CREATE_COMPUTE_RUNS = """
-CREATE TABLE IF NOT EXISTS compute_runs (
+_CREATE_RUNS = """
+CREATE TABLE IF NOT EXISTS runs (
     -- Daemon-level compute run records (maps to /runs endpoint).
-    -- Distinct from schema.sql runs (which requires question_id FK).
+    -- Aligned with schema.sql naming (Phase 4 table alignment).
     run_id        TEXT PRIMARY KEY,
     workspace_id  TEXT NOT NULL,
     domain_id     TEXT NOT NULL,
@@ -108,9 +118,10 @@ CREATE TABLE IF NOT EXISTS compute_runs (
 );
 """
 
-_CREATE_SSV_RECORDS = """
-CREATE TABLE IF NOT EXISTS ssv_records (
+_CREATE_SSVS = """
+CREATE TABLE IF NOT EXISTS ssvs (
     -- Serialised SSV dicts produced by the pipeline (P2 — immutable).
+    -- Aligned with schema.sql naming (Phase 4 table alignment).
     ssv_id      TEXT PRIMARY KEY,
     run_id      TEXT NOT NULL,
     ssv_json    TEXT NOT NULL,
@@ -118,9 +129,10 @@ CREATE TABLE IF NOT EXISTS ssv_records (
 );
 """
 
-_CREATE_CLAIM_RECORDS = """
-CREATE TABLE IF NOT EXISTS claim_records (
+_CREATE_CLAIMS = """
+CREATE TABLE IF NOT EXISTS claims (
     -- Draft claims produced by the pipeline (immutable provenance record).
+    -- Aligned with schema.sql naming (Phase 4 table alignment).
     claim_id    TEXT PRIMARY KEY,
     run_id      TEXT NOT NULL,
     claim_json  TEXT NOT NULL,
@@ -128,14 +140,21 @@ CREATE TABLE IF NOT EXISTS claim_records (
 );
 """
 
+# Backward-compat VIEW aliases (old names → new tables, no breaking change)
+_VIEW_ALIASES = """
+CREATE VIEW IF NOT EXISTS compute_runs AS SELECT * FROM runs;
+CREATE VIEW IF NOT EXISTS ssv_records  AS SELECT * FROM ssvs;
+CREATE VIEW IF NOT EXISTS claim_records AS SELECT * FROM claims;
+"""
+
 _ALL_DDL = [
     _CREATE_INGEST_EVENTS,
     _CREATE_DOMAINS,
     _CREATE_COMPUTE_JOBS,
     _CREATE_WORKSPACES,
-    _CREATE_COMPUTE_RUNS,
-    _CREATE_SSV_RECORDS,
-    _CREATE_CLAIM_RECORDS,
+    _CREATE_RUNS,
+    _CREATE_SSVS,
+    _CREATE_CLAIMS,
 ]
 
 
@@ -145,17 +164,75 @@ _ALL_DDL = [
 
 
 async def init_db() -> None:
-    """Create all tables if they don't exist. Idempotent."""
+    """Create all tables if they don't exist. Idempotent.
+
+    Phase 4 table alignment: migrates old names (compute_runs, ssv_records,
+    claim_records) to new names (runs, ssvs, claims) if they exist.
+    Old names are preserved as VIEWs for backward compatibility.
+    """
     db_path = _get_db_path()
     logger.info("Initialising SQLite at: %s", db_path)
     async with aiosqlite.connect(db_path) as db:
-        for ddl in _ALL_DDL:
-            await db.execute(ddl)
         # Enable WAL mode for concurrent reads during writes
         await db.execute("PRAGMA journal_mode=WAL;")
         await db.execute("PRAGMA foreign_keys=ON;")
+
+        # Phase 4 migration: old table → new table + VIEW alias
+        await _migrate_table_if_needed(db, "compute_runs", "runs")
+        await _migrate_table_if_needed(db, "ssv_records", "ssvs")
+        await _migrate_table_if_needed(db, "claim_records", "claims")
+
+        # Create all tables (IF NOT EXISTS — idempotent)
+        for ddl in _ALL_DDL:
+            await db.execute(ddl)
+
+        # Create backward-compat VIEW aliases
+        for stmt in _VIEW_ALIASES.strip().split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                await db.execute(stmt)
+
         await db.commit()
     logger.info("SQLite schema ready.")
+
+
+async def _migrate_table_if_needed(
+    db: aiosqlite.Connection, old_name: str, new_name: str
+) -> None:
+    """Migrate data from old_name to new_name if old table exists as a real table.
+
+    Steps: (1) INSERT ... SELECT, (2) DROP old table, (3) VIEW created later.
+    Skips if old_name doesn't exist or is already a VIEW.
+    """
+    cur = await db.execute(
+        "SELECT type FROM sqlite_master WHERE name = ?", (old_name,)
+    )
+    row = await cur.fetchone()
+    if row is None:
+        return  # old table doesn't exist — fresh DB
+    if row[0] == "view":
+        return  # already migrated — old name is a VIEW
+
+    # old_name is a real table — migrate data
+    logger.info("Migrating table %s → %s", old_name, new_name)
+
+    # Ensure new table exists before copying
+    # (DDL runs after this, but we need the target now)
+    cur = await db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+        (new_name,),
+    )
+    if await cur.fetchone() is None:
+        # Get column info from old table and create new one with same schema
+        cur = await db.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{old_name}'")  # noqa: S608
+        schema_row = await cur.fetchone()
+        if schema_row:
+            create_sql = schema_row[0].replace(old_name, new_name, 1)
+            await db.execute(create_sql)
+
+    await db.execute(f"INSERT OR IGNORE INTO {new_name} SELECT * FROM {old_name}")  # noqa: S608
+    await db.execute(f"DROP TABLE {old_name}")  # noqa: S608
+    logger.info("Migration complete: %s → %s", old_name, new_name)
 
 
 # ---------------------------------------------------------------------------

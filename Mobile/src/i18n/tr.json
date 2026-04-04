@@ -1,0 +1,49 @@
+{
+  "nav": {
+    "discover": "Kesfet",
+    "search": "Ara",
+    "collections": "Koleksiyonlar",
+    "settings": "Ayarlar"
+  },
+  "discover": {
+    "title": "Kesfet",
+    "feed": "Akisiniz",
+    "endorsed": "Endorsed Claim'ler",
+    "searchPlaceholder": "Claim, arastirmaci, alan ara...",
+    "noResults": "Sonuc bulunamadi.",
+    "loadMore": "Daha fazla yukle",
+    "emptyFeed": "Akisinizda endorsed claim'leri gormek icin alanlara abone olun."
+  },
+  "claim": {
+    "detail": "Claim Detayi",
+    "ssv": "SSV",
+    "gates": "Gate Sonuclari",
+    "citations": "Citation Chain",
+    "impactScore": "Impact Score",
+    "endorsedBy": "Onaylayan",
+    "replicatedBy": "Tekrarlayan",
+    "domain": "Alan",
+    "method": "Yontem"
+  },
+  "profile": {
+    "title": "Arastirmaci Profili",
+    "endorsedClaims": "Endorsed Claim'ler",
+    "impactStats": "Etki Istatistikleri"
+  },
+  "settings": {
+    "language": "Dil",
+    "pushNotifications": "Bildirimler",
+    "pushHint": "Abone oldugunuz alanlarda yeni endorsed claim'ler icin bildirim alin.",
+    "subscriptions": "Alan Abonelikleri"
+  },
+  "auth": {
+    "signIn": "Giris Yap",
+    "signOut": "Cikis Yap"
+  },
+  "common": {
+    "loading": "Yukleniyor...",
+    "error": "Bir hata olustu",
+    "retry": "Tekrar Dene",
+    "offline": "Cevrimdisisiniz"
+  }
+}

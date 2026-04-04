@@ -1,2 +1,1 @@
-// Theme tokens — populated in M1
-export {};
+export { colors, spacing, typography } from "./tokens";

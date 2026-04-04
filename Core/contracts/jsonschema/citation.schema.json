@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "citation.schema.json",
+  "title": "Citation",
+  "description": "SSV-to-SSV citation — links endorsed claims in a directed graph",
+  "type": "object",
+  "required": ["source_claim_id", "cited_claim_id", "relationship", "cited_by_orcid"],
+  "properties": {
+    "source_claim_id": {
+      "type": "string",
+      "description": "Claim ID of the citing claim"
+    },
+    "cited_claim_id": {
+      "type": "string",
+      "description": "Claim ID of the cited claim"
+    },
+    "relationship": {
+      "type": "string",
+      "enum": ["builds_upon", "extends", "replicates", "contradicts"],
+      "description": "Nature of the citation relationship"
+    },
+    "cited_by_orcid": {
+      "type": "string",
+      "description": "ORCID of the researcher creating the citation"
+    },
+    "cited_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of citation creation"
+    }
+  },
+  "additionalProperties": false
+}

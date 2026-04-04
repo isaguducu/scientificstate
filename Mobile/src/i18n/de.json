@@ -1,0 +1,49 @@
+{
+  "nav": {
+    "discover": "Entdecken",
+    "search": "Suchen",
+    "collections": "Sammlungen",
+    "settings": "Einstellungen"
+  },
+  "discover": {
+    "title": "Entdecken",
+    "feed": "Ihr Feed",
+    "endorsed": "Endorsed Claims",
+    "searchPlaceholder": "Claims, Forscher, Domanen suchen...",
+    "noResults": "Keine Ergebnisse gefunden.",
+    "loadMore": "Mehr laden",
+    "emptyFeed": "Abonnieren Sie Domanen, um Endorsed Claims in Ihrem Feed zu sehen."
+  },
+  "claim": {
+    "detail": "Claim-Detail",
+    "ssv": "SSV",
+    "gates": "Gate-Ergebnisse",
+    "citations": "Citation Chain",
+    "impactScore": "Impact Score",
+    "endorsedBy": "Endorsed von",
+    "replicatedBy": "Repliziert von",
+    "domain": "Domane",
+    "method": "Methode"
+  },
+  "profile": {
+    "title": "Forscherprofil",
+    "endorsedClaims": "Endorsed Claims",
+    "impactStats": "Wirkungsstatistiken"
+  },
+  "settings": {
+    "language": "Sprache",
+    "pushNotifications": "Benachrichtigungen",
+    "pushHint": "Erhalten Sie Benachrichtigungen fur neue Endorsed Claims in Ihren abonnierten Bereichen.",
+    "subscriptions": "Fachbereichsabonnements"
+  },
+  "auth": {
+    "signIn": "Anmelden",
+    "signOut": "Abmelden"
+  },
+  "common": {
+    "loading": "Laden...",
+    "error": "Ein Fehler ist aufgetreten",
+    "retry": "Erneut versuchen",
+    "offline": "Sie sind offline"
+  }
+}
