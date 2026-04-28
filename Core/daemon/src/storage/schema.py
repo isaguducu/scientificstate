@@ -140,6 +140,21 @@ CREATE TABLE IF NOT EXISTS claims (
 );
 """
 
+_CREATE_QUESTIONS = """
+CREATE TABLE IF NOT EXISTS questions (
+    -- Researcher-defined scientific questions (Phase 9 — Main_Source §19.3).
+    question_id  TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    text         TEXT NOT NULL,
+    domain_id    TEXT,
+    assumptions  TEXT NOT NULL DEFAULT '[]',
+    status       TEXT NOT NULL DEFAULT 'open'
+                 CHECK (status IN ('open', 'answered', 'contested', 'closed')),
+    created_at   TEXT NOT NULL DEFAULT (datetime('now', 'utc')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now', 'utc'))
+);
+"""
+
 # Backward-compat VIEW aliases (old names → new tables, no breaking change)
 _VIEW_ALIASES = """
 CREATE VIEW IF NOT EXISTS compute_runs AS SELECT * FROM runs;
@@ -238,6 +253,7 @@ _ALL_DDL = [
     _CREATE_RUNS,
     _CREATE_SSVS,
     _CREATE_CLAIMS,
+    _CREATE_QUESTIONS,
     _CREATE_QPU_PRICE_SNAPSHOTS,
     _CREATE_QPU_USAGE_LOG,
     _CREATE_QPU_QUOTAS,
@@ -279,6 +295,17 @@ async def init_db() -> None:
             stmt = stmt.strip()
             if stmt:
                 await db.execute(stmt)
+
+        # Phase 9 migration: add endorsement columns to claims if absent.
+        # SQLite does not support IF NOT EXISTS on ALTER TABLE — use try/except.
+        for col_def in (
+            "ALTER TABLE claims ADD COLUMN endorsed_at TEXT",
+            "ALTER TABLE claims ADD COLUMN endorsed_by TEXT",
+        ):
+            try:
+                await db.execute(col_def)
+            except Exception:  # noqa: BLE001
+                pass  # column already exists
 
         await db.commit()
     logger.info("SQLite schema ready.")

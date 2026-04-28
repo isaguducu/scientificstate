@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Add parent to path so imports work when running directly
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.routes import diagnostics, discovery, domains, export, health, ingest, modules, monitoring, registry, replication, runs, workspaces, qpu_admin
+from src.routes import diagnostics, discovery, domains, export, health, ingest, modules, monitoring, registry, replication, runs, workspaces, qpu_admin, questions, claims
 from src.routes.monitoring import MetricsMiddleware
 from src.storage.schema import init_db
 
@@ -110,6 +110,8 @@ app.include_router(diagnostics.router)
 app.include_router(monitoring.router)
 
 app.include_router(qpu_admin.router)
+app.include_router(questions.router)
+app.include_router(claims.router)
 
 
 # ---------------------------------------------------------------------------

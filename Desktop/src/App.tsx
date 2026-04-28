@@ -38,6 +38,7 @@ function App({ children }: Props) {
           <span className="app-tagline">authoritative scientific work surface</span>
           <nav className="app-nav">
             <Link to="/" className="app-nav-link">Dashboard</Link>
+            <Link to="/ingest" className="app-nav-link">Ingest</Link>
             <Link to="/modules" className="app-nav-link">Modules</Link>
             <Link to="/settings/qpu" className="app-nav-link">Settings</Link>
           </nav>

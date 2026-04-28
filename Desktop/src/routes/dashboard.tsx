@@ -95,13 +95,13 @@ export function Dashboard() {
           <button
             onClick={() =>
               navigate({
-                to: "/compute/$runId",
-                params: { runId: `new?ws=${ws.workspace_id}` },
+                to: "/workspace/$workspaceId",
+                params: { workspaceId: ws.workspace_id },
               })
             }
             style={{ padding: "5px 14px", borderRadius: 6, background: "#0a84ff", border: "none", color: "#fff", cursor: "pointer" }}
           >
-            Compute
+            Open
           </button>
         </div>
       ))}
