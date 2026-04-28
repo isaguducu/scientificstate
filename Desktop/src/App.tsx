@@ -6,7 +6,7 @@ import { DaemonStatus } from "./components/DaemonStatus";
 async function tauriInvoke<T>(cmd: string): Promise<T> {
   try {
     const { invoke } = await import("@tauri-apps/api/core");
-    return invoke<T>(cmd);
+    return await invoke<T>(cmd);
   } catch {
     // Tauri not available (browser dev mode) — call daemon directly
     const urlMap: Record<string, string> = {
