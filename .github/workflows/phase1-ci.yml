@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: Core/contracts/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm run validate
       - run: pnpm run build
