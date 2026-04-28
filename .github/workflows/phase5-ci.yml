@@ -102,17 +102,8 @@ jobs:
           node-version: 20
       - run: cd Core/ui && npm ci && npm run build
 
-  # ── Web build ───────────────────────────────────────────────────────────
-  web:
-    name: Web build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: cd Web && npm ci
-      - run: cd Web && npm run build
+  # ── Web build — MOVED to platform-private CI ──────────────────────────
+  # Web/ is managed in scientificstate/platform-private
 
   # ── Desktop typecheck + build ───────────────────────────────────────────
   desktop:

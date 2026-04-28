@@ -1,5 +1,5 @@
 packages:
   - "Desktop"
-  - "Web"
   - "Core/ui"
   - "Core/contracts"
+  # Web/ and Mobile/ are managed in scientificstate/platform-private
