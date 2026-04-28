@@ -104,18 +104,19 @@ jobs:
     name: Desktop package (${{ matrix.target }})
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [desktop-typecheck]
-    # Tauri bundles the daemon binary (externalBin) — requires a pre-compiled
-    # daemon binary that is not built in this workflow.  Mark continue-on-error
-    # so the ⚠️ is visible but does not block CI green status.
+    # Tauri bundles the daemon binary (externalBin) — stub binary created for CI.
+    # Real daemon binary is produced by the Nuitka job and attached as artifact.
     continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
-            target: universal-apple-darwin
+            target: aarch64-apple-darwin
+            stub: Desktop/src-tauri/scientificstate-daemon-aarch64-apple-darwin
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            stub: Desktop/src-tauri/scientificstate-daemon-x86_64-pc-windows-msvc.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -126,8 +127,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - uses: dtolnay/rust-toolchain@stable
-      - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
-        if: matrix.os == 'macos-latest'
+      - name: Stub daemon binary for CI packaging
+        shell: bash
+        run: |
+          printf '#!/bin/sh\ntrue\n' > "${{ matrix.stub }}"
+          chmod +x "${{ matrix.stub }}" || true
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @scientificstate/desktop run tauri build -- --target ${{ matrix.target }}
 
