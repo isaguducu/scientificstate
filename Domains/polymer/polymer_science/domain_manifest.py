@@ -219,7 +219,7 @@ class PolymerScienceDomain(DomainModule):
                 "domain_id": self.domain_id,
                 "status": "ok",
                 "result": result,
-                "diagnostics": {},
+                "diagnostics": self._build_diagnostics(method_id, result),
             }
         except ValueError as exc:
             msg = str(exc)
@@ -287,6 +287,193 @@ class PolymerScienceDomain(DomainModule):
         elif method_id in _peaks_methods and "peaks" not in params:
             params["peaks"] = loaded
         return params
+
+    # ── Diagnostics builder (P4 uncertainty + P5 validity_scope) ─────────────
+
+    def _build_diagnostics(self, method_id: str, result: dict) -> dict:
+        """Extract uncertainty and validity_scope from a method result.
+
+        Called by execute_method() after a successful computation.
+        Populates the diagnostics dict consumed by the SSV factory
+        to satisfy P4 (mandatory uncertainty) and P5 (validity domains).
+
+        Returns:
+            dict with keys:
+              "uncertainty"    — dict of quantified uncertainty indicators
+              "validity_scope" — list of validity condition strings
+        """
+        _dispatch = {
+            "pca": self._diagnostics_pca,
+            "hca": self._diagnostics_hca,
+            "kmd_analysis": self._diagnostics_kmd,
+            "deisotoping": self._diagnostics_deisotoping,
+            "fragment_matching": self._diagnostics_fragment_matching,
+        }
+        fn = _dispatch.get(method_id)
+        if fn is None:
+            return {}
+        try:
+            return fn(result)
+        except Exception:  # noqa: BLE001
+            return {}
+
+    def _diagnostics_pca(self, result: dict) -> dict:
+        _evr = result.get("explained_variance_ratio")
+        evr = _evr if _evr is not None else []
+        # tolist() in case numpy array slipped through
+        evr_list = evr.tolist() if hasattr(evr, "tolist") else list(evr)
+        _cum = result.get("cumulative_variance")
+        cum_var = _cum if _cum is not None else []
+        cum_list = cum_var.tolist() if hasattr(cum_var, "tolist") else list(cum_var)
+        n_comp = result.get("n_components", len(evr_list))
+        total_var = round(cum_list[-1] * 100, 2) if cum_list else None
+        kaiser_n = result.get("kaiser_n")
+
+        uncertainty = {
+            "explained_variance_ratio": [round(v, 4) for v in evr_list[:n_comp]],
+            "total_variance_captured_pct": total_var,
+            "kaiser_components": kaiser_n,
+            "note": (
+                f"PCA captures {total_var}% of total variance "
+                f"in {n_comp} components."
+            ),
+        }
+        assumptions = result.get("assumptions", {})
+        validity_scope = [
+            f"mz_range: {assumptions.get('mz_range', 'default')} Da",
+            f"mz_bin: {assumptions.get('mz_bin_da', 1.0)} Da",
+            f"scaler: {assumptions.get('scaler', 'StandardScaler')}",
+            f"matrix_type: {assumptions.get('matrix_type', 'Correlation')}",
+            "Requires ≥3 blocks for stable PCA; single-block data not valid.",
+        ]
+        return {"uncertainty": uncertainty, "validity_scope": validity_scope}
+
+    def _diagnostics_hca(self, result: dict) -> dict:
+        metrics = result.get("metrics") or {}
+        n_clusters = result.get("n_clusters", 0)
+        auto_k = result.get("auto_k_used", False)
+        dist_stats = result.get("distance_stats") or {}
+
+        silhouette = metrics.get("silhouette")
+        db_index = metrics.get("davies_bouldin")
+        ch_index = metrics.get("calinski_harabasz")
+        contiguity = metrics.get("contiguity_score")
+
+        uncertainty = {
+            "silhouette_score": silhouette,
+            "davies_bouldin_index": db_index,
+            "calinski_harabasz_index": ch_index,
+            "contiguity_score": contiguity,
+            "merge_distance_range": {
+                "min": dist_stats.get("min"),
+                "max": dist_stats.get("max"),
+                "std": dist_stats.get("std"),
+            },
+            "k_auto_selected": auto_k,
+            "note": (
+                f"HCA produced {n_clusters} clusters "
+                f"(silhouette={silhouette}, DB={db_index}). "
+                "Silhouette >0.5 indicates well-separated clusters."
+            ),
+        }
+        assumptions = result.get("assumptions") or {}
+        validity_scope = [
+            f"linkage_method: {result.get('method', 'ward')}",
+            f"n_clusters: {n_clusters} "
+            f"({'auto-selected' if auto_k else 'user-specified'})",
+            f"standardization: {assumptions.get('standardization', 'StandardScaler')}",
+            "Requires ≥2 blocks; single-block input yields trivial clustering.",
+            "Valid for Py-GC-MS blocks with consistent m/z axis.",
+        ]
+        return {"uncertainty": uncertainty, "validity_scope": validity_scope}
+
+    def _diagnostics_kmd(self, result: dict) -> dict:
+        cluster_relations = result.get("cluster_relations") or []
+        n_clusters = result.get("n_clusters", len(cluster_relations))
+        polymer = result.get("polymer", "unknown")
+
+        # Count how many series are assigned per cluster
+        series_counts = [
+            len(c.get("kmd_series", {})) for c in cluster_relations
+        ]
+        total_assigned = sum(series_counts)
+        assumptions = result.get("assumptions") or {}
+
+        uncertainty = {
+            "n_clusters_analysed": n_clusters,
+            "total_kmd_series_assigned": total_assigned,
+            "series_per_cluster": series_counts,
+            "polymer_assumed": polymer,
+            "kmd_tolerance_used": assumptions.get("kmd_tol", "default"),
+            "note": (
+                f"{total_assigned} KMD homolog series assigned across "
+                f"{n_clusters} clusters for polymer={polymer}."
+            ),
+        }
+        validity_scope = [
+            f"polymer: {polymer} repeat unit assumed",
+            f"kmd_base: Kendrick base from polymer repeat mass",
+            "KMD series assignment valid within declared kmd_tol.",
+            "Results are cluster-relative; compare only within same HCA run.",
+            "Background-corrected enrichment scores assume Poisson-like noise.",
+        ]
+        return {"uncertainty": uncertainty, "validity_scope": validity_scope}
+
+    def _diagnostics_deisotoping(self, result: dict) -> dict:
+        groups = result.get("groups") or result.get("isotope_groups") or []
+        n_groups = len(groups)
+        charge_state = result.get("charge_state", 1)
+
+        uncertainty = {
+            "n_isotope_envelopes": n_groups,
+            "charge_state_assumed": charge_state,
+            "note": (
+                f"Deisotoping identified {n_groups} isotope envelopes "
+                f"at charge state z={charge_state}."
+            ),
+        }
+        validity_scope = [
+            f"charge_state: z={charge_state} assumed throughout",
+            "Greedy assignment — overlapping envelopes resolved by intensity.",
+            "Valid for unit-resolution (nominal mass) spectra.",
+            "Not valid for high-resolution data without mass accuracy adjustment.",
+        ]
+        return {"uncertainty": uncertainty, "validity_scope": validity_scope}
+
+    def _diagnostics_fragment_matching(self, result: dict) -> dict:
+        matches = result.get("matches") or []
+        n_matches = len(matches)
+
+        # Count confidence levels
+        level_counts: dict[str, int] = {}
+        ppm_values: list[float] = []
+        for m in matches:
+            lvl = m.get("confidence_level", "L?")
+            level_counts[lvl] = level_counts.get(lvl, 0) + 1
+            ppm = m.get("ppm")
+            if ppm is not None and ppm < 1e6:
+                ppm_values.append(abs(float(ppm)))
+
+        avg_ppm = round(sum(ppm_values) / len(ppm_values), 1) if ppm_values else None
+        polymer = matches[0].get("polymer", "unknown") if matches else "unknown"
+
+        uncertainty = {
+            "n_matches": n_matches,
+            "confidence_level_counts": level_counts,
+            "mean_ppm_error": avg_ppm,
+            "note": (
+                f"{n_matches} fragment matches for polymer={polymer}. "
+                f"Confidence: {level_counts}. Mean Δppm={avg_ppm}."
+            ),
+        }
+        validity_scope = [
+            f"polymer_library: {polymer} fragment DB",
+            "Fragment matching valid within declared abs_tol (Da).",
+            "Confidence levels: L1=exact, L2=probable, L3=putative, L4=tentative.",
+            "L4 matches require additional validation (mass accuracy <0.1 Da).",
+            "Library-dependent — results reflect fragment_db.json version.",
+        ]
+        return {"uncertainty": uncertainty, "validity_scope": validity_scope}
 
     # ── Private dispatch helpers ──────────────────────────────────────────────
 

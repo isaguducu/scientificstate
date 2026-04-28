@@ -321,6 +321,16 @@ async def create_run(body: ComputeRunRequest, request: Request) -> Any:
             await db.commit()
         return RunAccepted(run_id=run_id)
 
+    # Propagate SSV uncertainty/validity flags to claim (P4/P5 gate wiring).
+    # The claims factory always starts with uncertainty_present=False; we update
+    # it here based on whether the SSV factory actually populated U and V.
+    ssv_u = pr.ssv.get("u", {})
+    ssv_v = pr.ssv.get("v", {})
+    if ssv_u.get("measurement_error") or ssv_u.get("notes"):
+        pr.claim["uncertainty_present"] = True
+    if ssv_v.get("conditions"):
+        pr.claim["validity_scope_present"] = True
+
     # Persist SSV (P2 — immutable record)
     ssv_id = pr.ssv.get("id", str(uuid.uuid4()))
     claim_id = pr.claim.get("id", str(uuid.uuid4()))
