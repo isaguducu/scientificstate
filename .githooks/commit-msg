@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""
+commit-msg hook — enforced red line:
+No AI tool traces in any commit. Ever.
+Strips: Co-Authored-By, Claude, Codex, Copilot, Anthropic, OpenAI
+"""
+import sys, re
+
+msg_file = sys.argv[1]
+with open(msg_file, "r", encoding="utf-8") as f:
+    msg = f.read()
+
+patterns = [
+    r"\nCo-Authored-By:[^\n]*",
+    r"\nco-authored-by:[^\n]*",
+    r"\nCo-authored-by:[^\n]*",
+    r"🤖 Generated with \[Claude Code\][^\n]*\n?",
+    r"Generated with Claude[^\n]*\n?",
+]
+for p in patterns:
+    msg = re.sub(p, "", msg, flags=re.IGNORECASE)
+
+with open(msg_file, "w", encoding="utf-8") as f:
+    f.write(msg)
