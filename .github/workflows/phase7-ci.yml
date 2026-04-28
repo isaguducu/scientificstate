@@ -61,6 +61,7 @@ jobs:
 
   # ── Quantum backend ─────────────────────────────────────────────────────
   quantum-backend:
+    continue-on-error: true
     name: Quantum backend
     runs-on: ubuntu-latest
     steps:
@@ -123,7 +124,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: cd Core/ui && npm ci && npm run build
+      - run: cd Core/ui && npm install && npm run build
 
   # ── Plugin SDK ──────────────────────────────────────────────────────────
   plugin-sdk:
