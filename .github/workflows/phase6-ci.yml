@@ -148,18 +148,8 @@ jobs:
           node-version: 20
       - run: cd Core/ui && npm ci && npm run build
 
-  # ── Web build ───────────────────────────────────────────────────────────
-  web:
-    name: Web build
-    needs: [shared-ui]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: cd Web && npm ci
-      - run: cd Web && npm run build
+  # ── Web build — MOVED to platform-private CI ──────────────────────────
+  # Web/ is managed in scientificstate/platform-private
 
   # ── Desktop typecheck + build ───────────────────────────────────────────
   desktop:
@@ -176,17 +166,8 @@ jobs:
       - run: cd Desktop && npm run typecheck
       - run: cd Desktop && npm run build
 
-  # ── Mobile ──────────────────────────────────────────────────────────────
-  mobile:
-    name: Mobile export
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: cd Mobile && npm ci
-      - run: cd Mobile && npx expo export --platform web
+  # ── Mobile — MOVED to platform-private CI ─────────────────────────────
+  # Mobile/ is managed in scientificstate/platform-private
 
   # ── i18n key check ─────────────────────────────────────────────────────
   i18n-check:
@@ -214,17 +195,5 @@ jobs:
       - run: cd Core/framework && uv sync --extra dev
       - run: cd Core/framework && uv run pytest tests/test_recommendation.py tests/test_trending.py -q
 
-  # ── SAML integration ───────────────────────────────────────────────────
-  saml-integration:
-    name: SAML integration test
-    needs: [web]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: cd Web && npm ci
-      - run: cd Web && npx tsc --noEmit --project tsconfig.json
-      - run: npx tsx Web/tests/saml-integration.test.ts
-        # Mock IdP SAML flow: XML parsing, status validation, conditions, email format
+  # ── SAML integration — MOVED to platform-private CI ───────────────────
+  # SAML tests depend on Web/ — managed in scientificstate/platform-private
