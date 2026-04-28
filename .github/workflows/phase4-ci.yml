@@ -126,6 +126,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - uses: dtolnay/rust-toolchain@stable
+      - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+        if: matrix.os == 'macos-latest'
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @scientificstate/desktop run tauri build -- --target ${{ matrix.target }}
 

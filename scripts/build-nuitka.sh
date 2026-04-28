@@ -26,14 +26,16 @@ mkdir -p "$OUTPUT_DIR"
 # Record start time for benchmark
 START_TS=$(date +%s)
 
+# Run from DAEMON_DIR so that the `src` package is importable by Nuitka
+cd "$DAEMON_DIR"
+
 python -m nuitka \
     --standalone \
     --output-dir="$OUTPUT_DIR" \
     --include-package=src \
-    --include-package=scientificstate \
     --follow-imports \
     --assume-yes-for-downloads \
-    "$DAEMON_DIR/src/main.py"
+    "src/main.py"
 
 END_TS=$(date +%s)
 ELAPSED=$((END_TS - START_TS))
