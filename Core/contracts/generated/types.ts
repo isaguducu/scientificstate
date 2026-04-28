@@ -251,6 +251,10 @@ export interface Claim {
    */
   contradictions: Contradiction[];
   /**
+   * Trust tier — local_unverified (default), community_signed (cross-user verification), scientificstate_verified (official federation + institutional attestation)
+   */
+  trust_tier?: "local_unverified" | "community_signed" | "scientificstate_verified";
+  /**
    * User ID of endorser — non-null only when status=endorsed
    */
   endorser_id?: string | null;
@@ -1278,6 +1282,10 @@ export interface ClaimProjection {
    * Claim statement. Copy standard: no 'proven', 'definitive', 'the best', 'confirmed'.
    */
   text: string;
+  /**
+   * Trust tier — determines badge display in portal and desktop
+   */
+  trust_tier: "local_unverified" | "community_signed" | "scientificstate_verified";
   /**
    * 7-state — matches claim lifecycle exactly. Dominant visual on claim card.
    */
