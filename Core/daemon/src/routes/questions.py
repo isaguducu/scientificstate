@@ -125,10 +125,14 @@ async def list_questions(workspace_id: str) -> Any:
 
         cur = await db.execute(
             """
-            SELECT question_id, workspace_id, text, domain_id, status, created_at
-            FROM questions
-            WHERE workspace_id = ?
-            ORDER BY created_at DESC
+            SELECT q.question_id, q.workspace_id, q.text, q.domain_id,
+                   q.status, q.created_at,
+                   COUNT(r.run_id) AS run_count
+            FROM questions q
+            LEFT JOIN runs r ON r.question_id = q.question_id
+            WHERE q.workspace_id = ?
+            GROUP BY q.question_id
+            ORDER BY q.created_at DESC
             """,
             (workspace_id,),
         )
@@ -142,7 +146,7 @@ async def list_questions(workspace_id: str) -> Any:
             "domain_id": r["domain_id"],
             "status": r["status"],
             "created_at": r["created_at"],
-            "run_count": 0,
+            "run_count": r["run_count"],
         }
         for r in rows
     ]
@@ -150,7 +154,7 @@ async def list_questions(workspace_id: str) -> Any:
 
 @router.get("/questions/{question_id}", response_model=QuestionDetail)
 async def get_question(question_id: str) -> Any:
-    """Return question detail. Linked runs are not yet joinable (no FK in runs table)."""
+    """Return question detail with linked runs."""
     async with aiosqlite.connect(get_db_path()) as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute(
@@ -158,13 +162,36 @@ async def get_question(question_id: str) -> Any:
         )
         row = await cur.fetchone()
 
-    if row is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Question not found: {question_id}",
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Question not found: {question_id}",
+            )
+
+        # Fetch linked runs (question_id FK added Phase 9)
+        cur = await db.execute(
+            """
+            SELECT run_id, domain_id, method_id, status, started_at, finished_at
+            FROM runs
+            WHERE question_id = ?
+            ORDER BY started_at DESC
+            """,
+            (question_id,),
         )
+        run_rows = await cur.fetchall()
 
     assumptions = json.loads(row["assumptions"] or "[]")
+    runs = [
+        {
+            "run_id": r["run_id"],
+            "domain_id": r["domain_id"],
+            "method_id": r["method_id"],
+            "status": r["status"],
+            "started_at": r["started_at"],
+            "finished_at": r["finished_at"],
+        }
+        for r in run_rows
+    ]
     return {
         "question_id": row["question_id"],
         "workspace_id": row["workspace_id"],
@@ -172,7 +199,7 @@ async def get_question(question_id: str) -> Any:
         "domain_id": row["domain_id"],
         "status": row["status"],
         "created_at": row["created_at"],
-        "run_count": 0,
+        "run_count": len(runs),
         "assumptions": assumptions,
-        "runs": [],
+        "runs": runs,
     }

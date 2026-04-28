@@ -17,6 +17,27 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+try:
+    import numpy as _np
+
+    class _NumpyEncoder(json.JSONEncoder):
+        """JSON encoder that handles numpy scalars and arrays."""
+        def default(self, obj: Any) -> Any:
+            if isinstance(obj, _np.integer):
+                return int(obj)
+            if isinstance(obj, _np.floating):
+                return float(obj)
+            if isinstance(obj, _np.ndarray):
+                return obj.tolist()
+            return super().default(obj)
+
+    def _json_dumps(obj: Any) -> str:
+        return json.dumps(obj, cls=_NumpyEncoder)
+
+except ImportError:
+    def _json_dumps(obj: Any) -> str:  # type: ignore[misc]
+        return json.dumps(obj)
+
 import aiosqlite
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -71,6 +92,7 @@ class ComputeRunRequest(BaseModel):
     assumptions: list[dict[str, Any]] = Field(default_factory=list)
     parameters: dict[str, Any] = Field(default_factory=dict)
     compute_class: str = Field(default="classical")
+    question_id: str | None = Field(default=None)
 
 
 class RunAccepted(BaseModel):
@@ -94,17 +116,20 @@ async def _insert_run(
     ssv_id: str | None,
     result_json: str | None,
     error_json: str | None,
+    question_id: str | None = None,
 ) -> None:
     await db.execute(
         """
         INSERT INTO runs
             (run_id, workspace_id, domain_id, method_id, status,
-             started_at, finished_at, ssv_id, result_json, error_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             started_at, finished_at, ssv_id, result_json, error_json,
+             question_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             run_id, workspace_id, domain_id, method_id, status,
             started_at, finished_at, ssv_id, result_json, error_json,
+            question_id,
         ),
     )
 
@@ -180,11 +205,32 @@ async def create_run(body: ComputeRunRequest, request: Request) -> Any:
             detail=f"Domain not found: {body.domain_id}",
         )
 
+    # Resolve dataset_ref: if it looks like a UUID (raw_data_id), look up the
+    # actual source_path from ingest_events table (P9 — raw data custody).
+    resolved_dataset_ref = body.dataset_ref
+    if body.dataset_ref:
+        import re as _re
+        _UUID_RE = _re.compile(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+            _re.IGNORECASE,
+        )
+        if _UUID_RE.match(body.dataset_ref):
+            async with aiosqlite.connect(get_db_path()) as db:
+                db.row_factory = aiosqlite.Row
+                cur = await db.execute(
+                    "SELECT source_path FROM ingest_events WHERE ingest_id = ?",
+                    (body.dataset_ref,),
+                )
+                row = await cur.fetchone()
+                if row and row["source_path"]:
+                    resolved_dataset_ref = row["source_path"]
+
     # Insert pending run
     async with aiosqlite.connect(get_db_path()) as db:
         await _insert_run(
             db, run_id, body.workspace_id, body.domain_id, body.method_id,
             "pending", started_at, None, None, None, None,
+            question_id=body.question_id,
         )
         await db.commit()
 
@@ -233,7 +279,7 @@ async def create_run(body: ComputeRunRequest, request: Request) -> Any:
         backend_params = {**body.parameters, "domain_id": body.domain_id}
         backend_result = backend.execute(
             method_id=body.method_id,
-            dataset_ref=body.dataset_ref or "",
+            dataset_ref=resolved_dataset_ref or "",
             assumptions=body.assumptions,
             params=backend_params,
         )
@@ -259,7 +305,7 @@ async def create_run(body: ComputeRunRequest, request: Request) -> Any:
             domain=domain,
             method_id=body.method_id,
             assumptions=body.assumptions,
-            dataset_ref=body.dataset_ref,
+            dataset_ref=resolved_dataset_ref,
             workspace_id=body.workspace_id,
             parameters=body.parameters,
         )
@@ -280,16 +326,16 @@ async def create_run(body: ComputeRunRequest, request: Request) -> Any:
     claim_id = pr.claim.get("id", str(uuid.uuid4()))
     now = datetime.now(tz=timezone.utc).isoformat()
     run_status = pr.run.status.value  # "succeeded" | "failed"
-    result_json = json.dumps(pr.ssv.get("r", {}))
+    result_json = _json_dumps(pr.ssv.get("r", {}))
 
     async with aiosqlite.connect(get_db_path()) as db:
         await db.execute(
             "INSERT INTO ssvs (ssv_id, run_id, ssv_json) VALUES (?, ?, ?)",
-            (ssv_id, run_id, json.dumps(pr.ssv)),
+            (ssv_id, run_id, _json_dumps(pr.ssv)),
         )
         await db.execute(
             "INSERT INTO claims (claim_id, run_id, claim_json) VALUES (?, ?, ?)",
-            (claim_id, run_id, json.dumps(pr.claim)),
+            (claim_id, run_id, _json_dumps(pr.claim)),
         )
         await _update_run_status(
             db, run_id, run_status, now,

@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS runs (
     ssv_id        TEXT,
     result_json   TEXT,
     error_json    TEXT,
+    question_id   TEXT,
     created_at    TEXT NOT NULL DEFAULT (datetime('now', 'utc'))
 );
 """
@@ -297,10 +298,12 @@ async def init_db() -> None:
                 await db.execute(stmt)
 
         # Phase 9 migration: add endorsement columns to claims if absent.
+        # Phase 9 also adds question_id column to runs.
         # SQLite does not support IF NOT EXISTS on ALTER TABLE — use try/except.
         for col_def in (
             "ALTER TABLE claims ADD COLUMN endorsed_at TEXT",
             "ALTER TABLE claims ADD COLUMN endorsed_by TEXT",
+            "ALTER TABLE runs ADD COLUMN question_id TEXT",
         ):
             try:
                 await db.execute(col_def)
