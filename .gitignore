@@ -52,6 +52,8 @@ htmlcov/
 # Rust / Tauri
 target/
 *.rlib
+# Tauri externalBin pre-compiled daemon binaries
+Desktop/src-tauri/scientificstate-daemon-*
 
 # Python uv / ruff
 .uv/
