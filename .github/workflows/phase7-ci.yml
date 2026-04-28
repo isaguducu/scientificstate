@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/ -q
       - run: cd Core/daemon && uv run ruff check .
 
@@ -73,7 +73,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev --extra quantum
+      - run: cd Core/daemon && uv sync --extra quantum
       - run: cd Core/daemon && uv run pytest tests/test_quantum_sim_backend.py -q
       - run: cd Core/daemon && uv run pytest tests/test_quantum_hw_backend.py -q
 
@@ -150,7 +150,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_federation_sync.py -q
 
   # ── Audit ───────────────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_audit.py -q
 
   # ── Recommendation ─────────────────────────────────────────────────────
@@ -180,7 +180,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_recommendation.py tests/test_trending.py -q
 
   # ── i18n ────────────────────────────────────────────────────────────────
@@ -221,7 +221,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_platform_smoke.py -q
 
   # ── Integration hardening ──────────────────────────────────────────────
@@ -237,5 +237,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_integration_hardening.py -q

@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/ -q
       - run: cd Core/daemon && uv run ruff check .
 
@@ -73,7 +73,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev --extra quantum
+      - run: cd Core/daemon && uv sync --extra quantum
       - run: cd Core/daemon && uv run pytest tests/test_quantum_sim_backend.py -q
 
   # ── Quantum hardware ────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev --extra quantum
+      - run: cd Core/daemon && uv sync --extra quantum
       - run: cd Core/daemon && uv run pytest tests/test_quantum_hw_backend.py tests/test_qpu_resilience.py -q
 
   # ── Hybrid backend ─────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev --extra quantum
+      - run: cd Core/daemon && uv sync --extra quantum
       - run: cd Core/daemon && uv run pytest tests/test_hybrid_backend.py -q
 
   # ── Cost gate ──────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_cost_gate.py -q
 
   # ── Replication DB ─────────────────────────────────────────────────────
@@ -134,7 +134,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: cd Core/framework && uv sync --extra dev && uv run pytest tests/test_replication_db.py -q
-      - run: cd Core/daemon && uv sync --extra dev && uv run pytest tests/test_replication_routes.py -q
+      - run: cd Core/daemon && uv sync && uv run pytest tests/test_replication_routes.py -q
 
   # ── Federation governance ──────────────────────────────────────────────
   federation-governance:
@@ -148,7 +148,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_federation_governance.py -q
 
   # ── Domains ─────────────────────────────────────────────────────────────
@@ -235,7 +235,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_federation_sync.py -q
 
   # ── Audit ───────────────────────────────────────────────────────────────
@@ -250,7 +250,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_audit.py -q
 
   # ── Performance benchmark ──────────────────────────────────────────────
@@ -266,7 +266,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_performance_benchmark.py -q
 
   # ── Integration Phase 8 ────────────────────────────────────────────────
@@ -282,7 +282,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_integration_phase8.py -q
 
   # ── macOS build ─────────────────────────────────────────────────────────
@@ -312,5 +312,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cd Core/daemon && uv sync --extra dev
+      - run: cd Core/daemon && uv sync
       - run: cd Core/daemon && uv run pytest tests/test_platform_smoke.py -q
