@@ -48,6 +48,8 @@ from src.storage.schema import get_db_path
 logger = logging.getLogger("scientificstate.daemon.runs")
 
 router = APIRouter(prefix="/runs", tags=["compute"])
+# Routes that live under /workspaces/... but return run data (no /runs prefix).
+workspace_router = APIRouter(tags=["compute"])
 
 # ---------------------------------------------------------------------------
 # W3 / W4 import helpers
@@ -97,6 +99,18 @@ class ComputeRunRequest(BaseModel):
 
 class RunAccepted(BaseModel):
     run_id: str
+
+
+class RunSummary(BaseModel):
+    run_id: str
+    workspace_id: str
+    domain_id: str
+    method_id: str
+    status: str
+    started_at: str | None
+    finished_at: str | None
+    question_id: str | None = None
+    error: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +175,93 @@ async def _load_run(run_id: str) -> dict[str, Any] | None:
         )
         row = await cur.fetchone()
         return dict(row) if row else None
+
+
+# ---------------------------------------------------------------------------
+# GET /workspaces/{workspace_id}/runs  (P6 — Negative Knowledge)
+# ---------------------------------------------------------------------------
+
+
+@workspace_router.get(
+    "/workspaces/{workspace_id}/runs",
+    response_model=list[RunSummary],
+)
+async def list_workspace_runs(
+    workspace_id: str,
+    run_status: str | None = None,
+    limit: int = 100,
+) -> Any:
+    """List runs for a workspace, with optional status filter.
+
+    P6 — Preservation of Negative Knowledge: failed runs are first-class
+    citizens.  Pass ?run_status=failed to retrieve all failed runs with their
+    error detail, making negative results inspectable and searchable.
+
+    Query params:
+        run_status: filter by status (pending | succeeded | failed)
+        limit:      max rows (default 100)
+    """
+    async with aiosqlite.connect(get_db_path()) as db:
+        db.row_factory = aiosqlite.Row
+
+        cur = await db.execute(
+            "SELECT id FROM workspaces WHERE id = ?", (workspace_id,)
+        )
+        if await cur.fetchone() is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Workspace not found: {workspace_id}",
+            )
+
+        if run_status:
+            cur = await db.execute(
+                """
+                SELECT run_id, workspace_id, domain_id, method_id,
+                       status, started_at, finished_at, question_id,
+                       error_json
+                FROM runs
+                WHERE workspace_id = ? AND status = ?
+                ORDER BY started_at DESC
+                LIMIT ?
+                """,
+                (workspace_id, run_status, limit),
+            )
+        else:
+            cur = await db.execute(
+                """
+                SELECT run_id, workspace_id, domain_id, method_id,
+                       status, started_at, finished_at, question_id,
+                       error_json
+                FROM runs
+                WHERE workspace_id = ?
+                ORDER BY started_at DESC
+                LIMIT ?
+                """,
+                (workspace_id, limit),
+            )
+        rows = await cur.fetchall()
+
+    result = []
+    for r in rows:
+        entry: dict[str, Any] = {
+            "run_id": r["run_id"],
+            "workspace_id": r["workspace_id"],
+            "domain_id": r["domain_id"],
+            "method_id": r["method_id"],
+            "status": r["status"],
+            "started_at": r["started_at"],
+            "finished_at": r["finished_at"],
+            "question_id": r["question_id"],
+        }
+        if r["status"] == "failed" and r["error_json"]:
+            try:
+                entry["error"] = json.loads(r["error_json"])
+            except (json.JSONDecodeError, TypeError):
+                entry["error"] = {"raw": r["error_json"]}
+        else:
+            entry["error"] = None
+        result.append(entry)
+    return result
 
 
 # ---------------------------------------------------------------------------

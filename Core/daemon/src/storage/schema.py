@@ -141,6 +141,20 @@ CREATE TABLE IF NOT EXISTS claims (
 );
 """
 
+_CREATE_CLAIM_TRANSITIONS = """
+CREATE TABLE IF NOT EXISTS claim_transitions (
+    -- Immutable log of claim lifecycle state changes (P9 — Reversibility).
+    -- Every transition (create, endorse, contest, retract) appends a row.
+    transition_id  TEXT PRIMARY KEY,
+    claim_id       TEXT NOT NULL,
+    from_status    TEXT,
+    to_status      TEXT NOT NULL,
+    actor          TEXT NOT NULL DEFAULT 'system',
+    note           TEXT,
+    timestamp      TEXT NOT NULL DEFAULT (datetime('now', 'utc'))
+);
+"""
+
 _CREATE_QUESTIONS = """
 CREATE TABLE IF NOT EXISTS questions (
     -- Researcher-defined scientific questions (Phase 9 — Main_Source §19.3).
@@ -254,6 +268,7 @@ _ALL_DDL = [
     _CREATE_RUNS,
     _CREATE_SSVS,
     _CREATE_CLAIMS,
+    _CREATE_CLAIM_TRANSITIONS,
     _CREATE_QUESTIONS,
     _CREATE_QPU_PRICE_SNAPSHOTS,
     _CREATE_QPU_USAGE_LOG,
@@ -304,6 +319,17 @@ async def init_db() -> None:
             "ALTER TABLE claims ADD COLUMN endorsed_at TEXT",
             "ALTER TABLE claims ADD COLUMN endorsed_by TEXT",
             "ALTER TABLE runs ADD COLUMN question_id TEXT",
+            # claim_transitions is created via _ALL_DDL above (CREATE IF NOT EXISTS)
+            # but ensure the table exists even on pre-Phase-10 databases
+            """CREATE TABLE IF NOT EXISTS claim_transitions (
+                transition_id TEXT PRIMARY KEY,
+                claim_id TEXT NOT NULL,
+                from_status TEXT,
+                to_status TEXT NOT NULL,
+                actor TEXT NOT NULL DEFAULT 'system',
+                note TEXT,
+                timestamp TEXT NOT NULL DEFAULT (datetime('now', 'utc'))
+            )""",
         ):
             try:
                 await db.execute(col_def)
