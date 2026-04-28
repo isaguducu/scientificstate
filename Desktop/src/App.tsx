@@ -1,14 +1,14 @@
-import React from "react";
-import { Link } from "@tanstack/react-router";
-import { DaemonStatus } from "./components/DaemonStatus";
+import React, { useState, useEffect } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
 
-// Tauri IPC — gracefully falls back when running in browser (e.g. vite dev without tauri)
+// ---------------------------------------------------------------------------
+// Tauri IPC — falls back to direct HTTP in browser / dev mode
+// ---------------------------------------------------------------------------
 async function tauriInvoke<T>(cmd: string): Promise<T> {
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<T>(cmd);
   } catch {
-    // Tauri not available (browser dev mode) — call daemon directly
     const urlMap: Record<string, string> = {
       get_daemon_health: "http://127.0.0.1:9473/health",
       get_domains: "http://127.0.0.1:9473/domains",
@@ -23,32 +23,88 @@ async function tauriInvoke<T>(cmd: string): Promise<T> {
 
 export { tauriInvoke };
 
-interface Props {
-  children?: React.ReactNode;
+// ---------------------------------------------------------------------------
+// Mini daemon status dot (used in the top nav)
+// ---------------------------------------------------------------------------
+type DaemonState = "connecting" | "online" | "offline";
+
+function DaemonDot() {
+  const [state, setState] = useState<DaemonState>("connecting");
+
+  useEffect(() => {
+    let alive = true;
+    async function poll() {
+      try {
+        await tauriInvoke("get_daemon_health");
+        if (alive) setState("online");
+      } catch {
+        if (alive) setState("offline");
+      }
+    }
+    poll();
+    const t = setInterval(poll, 5000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+
+  const color = state === "online" ? "#34c759" : state === "offline" ? "#ff453a" : "#ff9f0a";
+  const label = state === "online" ? "Online" : state === "offline" ? "Offline" : "…";
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{
+        width: 7, height: 7, borderRadius: "50%", background: color,
+        boxShadow: `0 0 6px ${color}`,
+      }} />
+      <span style={{ fontSize: 12, color, fontWeight: 500 }}>{label}</span>
+    </div>
+  );
 }
 
+// ---------------------------------------------------------------------------
+// App shell
+// ---------------------------------------------------------------------------
+interface Props { children?: React.ReactNode }
+
+const NAV = [
+  { to: "/", label: "Dashboard" },
+  { to: "/ingest", label: "Ingest" },
+  { to: "/modules", label: "Modules" },
+  { to: "/settings/qpu", label: "Settings" },
+] as const;
+
 function App({ children }: Props) {
+  const routerState = useRouterState();
+  const currentPath = routerState.location.pathname;
+
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="app-header-inner">
-          <Link to="/" className="app-logo" style={{ textDecoration: "none", color: "inherit" }}>
-            ⚗️ ScientificState
-          </Link>
-          <span className="app-tagline">authoritative scientific work surface</span>
-          <nav className="app-nav">
-            <Link to="/" className="app-nav-link">Dashboard</Link>
-            <Link to="/ingest" className="app-nav-link">Ingest</Link>
-            <Link to="/modules" className="app-nav-link">Modules</Link>
-            <Link to="/settings/qpu" className="app-nav-link">Settings</Link>
-          </nav>
-          <div style={{ marginLeft: "auto" }}>
-            <DaemonStatus />
-          </div>
+    <div style={shell.root}>
+      {/* ── Top nav ──────────────────────────────────────────────────── */}
+      <header style={shell.header}>
+        <Link to="/" style={shell.logo}>
+          <span style={{ fontSize: 18 }}>⚗️</span>
+          <span style={shell.logoText}>ScientificState</span>
+        </Link>
+        <nav style={shell.nav}>
+          {NAV.map(({ to, label }) => {
+            const active = to === "/" ? currentPath === "/" : currentPath.startsWith(to);
+            return (
+              <Link
+                key={to}
+                to={to}
+                style={{ ...shell.navLink, ...(active ? shell.navLinkActive : {}) }}
+              >
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+        <div style={{ marginLeft: "auto" }}>
+          <DaemonDot />
         </div>
       </header>
 
-      <main className="app-main">
+      {/* ── Page content ─────────────────────────────────────────────── */}
+      <main style={shell.main}>
         {children}
       </main>
     </div>
@@ -57,63 +113,62 @@ function App({ children }: Props) {
 
 export default App;
 
-// Inline styles — no build toolchain dependency for Phase 0
-const style = document.createElement("style");
-style.textContent = `
-  .app-shell {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    background: var(--ss-bg);
-  }
-  .app-header {
-    background: var(--ss-surface);
-    border-bottom: 1px solid var(--ss-border);
-    padding: 12px 24px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  .app-header-inner {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  .app-logo {
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.3px;
-  }
-  .app-tagline {
-    font-size: 12px;
-    color: var(--ss-text-muted);
-    font-style: italic;
-  }
-  .app-nav {
-    display: flex;
-    gap: 8px;
-    margin-left: 16px;
-  }
-  .app-nav-link {
-    font-size: 13px;
-    color: var(--ss-text-muted);
-    text-decoration: none;
-    padding: 4px 10px;
-    border-radius: 4px;
-    transition: color 0.15s, background 0.15s;
-  }
-  .app-nav-link:hover {
-    color: var(--ss-text);
-    background: var(--ss-surface-2);
-  }
-  .app-main {
-    flex: 1;
-    padding: 24px;
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-  }
-`;
-document.head.appendChild(style);
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+const shell = {
+  root: {
+    display: "flex",
+    flexDirection: "column" as const,
+    minHeight: "100vh",
+    background: "var(--ss-bg)",
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "0 24px",
+    height: 48,
+    background: "var(--ss-surface)",
+    borderBottom: "1px solid var(--ss-border)",
+    position: "sticky" as const,
+    top: 0,
+    zIndex: 100,
+    flexShrink: 0,
+  },
+  logo: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    textDecoration: "none",
+    color: "inherit",
+    marginRight: 16,
+  },
+  logoText: {
+    fontSize: 15,
+    fontWeight: 700,
+    letterSpacing: "-0.3px",
+    color: "var(--ss-text)",
+  },
+  nav: {
+    display: "flex",
+    gap: 2,
+  },
+  navLink: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: "var(--ss-text-muted)",
+    textDecoration: "none",
+    padding: "5px 12px",
+    borderRadius: 6,
+    transition: "color 0.1s, background 0.1s",
+  },
+  navLinkActive: {
+    color: "var(--ss-text)",
+    background: "var(--ss-surface-2)",
+  },
+  main: {
+    flex: 1,
+    overflow: "auto",
+  },
+} as const;
