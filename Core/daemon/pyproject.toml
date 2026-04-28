@@ -33,10 +33,15 @@ dev-dependencies = [
     "httpx>=0.27.0",
     "ruff>=0.7.0",
     "requests>=2.31.0",
+    # Domain plugins — required for integration tests that test domain discovery.
+    # polymer_science is the reference domain; listed here so `uv sync` (dev mode)
+    # installs it and the daemon's discover_and_register() can find it via entry points.
+    "polymer-science",
 ]
 
 [tool.uv.sources]
 scientificstate-framework = { path = "../framework", editable = true }
+polymer-science = { path = "../../Domains/polymer", editable = true }
 
 [tool.ruff]
 line-length = 100

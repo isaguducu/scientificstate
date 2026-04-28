@@ -412,7 +412,7 @@ class PolymerScienceDomain(DomainModule):
         }
         validity_scope = [
             f"polymer: {polymer} repeat unit assumed",
-            f"kmd_base: Kendrick base from polymer repeat mass",
+            "kmd_base: Kendrick base from polymer repeat mass",
             "KMD series assignment valid within declared kmd_tol.",
             "Results are cluster-relative; compare only within same HCA run.",
             "Background-corrected enrichment scores assume Poisson-like noise.",
